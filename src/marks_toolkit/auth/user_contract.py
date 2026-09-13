@@ -1,18 +1,8 @@
-from abc import ABC, abstractmethod
+from abc import ABC
+from flask_login import UserMixin
 
-class AuthUser(ABC):
 
-    @property
-    @abstractmethod
-    def auth_id(self):
-        pass
+class AuthUser(UserMixin, ABC):
 
-    @property
-    @abstractmethod
-    def password_hash(self):
-        pass
-
-    @property
-    @abstractmethod
-    def is_active(self):
-        pass
+    def get_id(self):
+        return str(self.auth_id)

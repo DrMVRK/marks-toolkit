@@ -18,3 +18,7 @@ class UserStore(ABC):
     @abstractmethod
     def create_user(self, email, username, password_hash):
         pass
+
+    @abstractmethod
+    def rotate_auth_id(self, user):
+        pass
