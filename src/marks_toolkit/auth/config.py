@@ -35,3 +35,11 @@ class AuthConfig:
         self.reset_url = app.config.get(
             "MARKS_AUTH_RESET_URL"
         )
+
+        self.captcha_site_key = app.config.get(
+            "MARKS_AUTH_CAPTCHA_SITE_KEY"
+        )
+
+        self.captcha_secret_key = app.config.get(
+            "MARKS_AUTH_CAPTCHA_SECRET_KEY"
+        )

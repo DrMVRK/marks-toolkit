@@ -10,6 +10,8 @@ from .csrf import CSRFService
 from .reset_tokens import ResetTokenService
 from .password_reset import PasswordResetService
 from .mailer import ConsoleMailer
+from .risk import RiskService
+from .captcha import TestCaptchaProvider
 
 from flask_login import LoginManager
 
@@ -18,7 +20,13 @@ class AuthKit:
     def __init__(self):
         self.login_manager = LoginManager()
 
-    def init_app(self, app, user_store, mailer=None):
+    def init_app(
+            self, 
+            app, 
+            user_store, 
+            mailer=None,
+            captcha_provider=None
+    ):
         if not isinstance(user_store, UserStore):
             raise TypeError("user_store must be an instance of UserStore")
 
@@ -79,6 +87,12 @@ class AuthKit:
             mailer=mailer
         )
 
+        risk_service = RiskService(
+            captcha_threshold=4,
+            block_threshold=15,
+            failure_window_seconds=900
+        )
+
         state = AuthState(
             config=config, 
             user_store=user_store,
@@ -89,7 +103,9 @@ class AuthKit:
             csrf_service=csrf_service,
             reset_token_service=reset_token_service,
             password_reset_service=password_reset_service,
-            mailer=mailer
+            mailer=mailer,
+            risk_service=risk_service,
+            captcha_provider=captcha_provider
         )
 
         app.extensions["marks_auth"] = state

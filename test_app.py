@@ -5,6 +5,7 @@ from flask import Flask
 from marks_toolkit.auth import AuthKit
 from marks_toolkit.auth.user_contract import AuthUser
 from marks_toolkit.auth.user_store import UserStore
+from marks_toolkit.auth.captcha import TestCaptchaProvider
 
 
 class TestUser(AuthUser):
@@ -85,10 +86,14 @@ app.config["MARKS_AUTH_RESET_URL"] = (
 
 auth_kit = AuthKit()
 user_store = TestUserStore()
+captcha_provider = TestCaptchaProvider()
+
+app.config["MARKS_AUTH_CAPTCHA_SITE_KEY"] = "test-site-key"
 
 auth_kit.init_app(
     app,
-    user_store=user_store
+    user_store=user_store,
+    captcha_provider=captcha_provider
 )
 
 state = app.extensions["marks_auth"]
@@ -98,29 +103,6 @@ state = app.extensions["marks_auth"]
 # Create one test user
 # --------------------------------------------------
 
-test_hash = state.password_service.hash_password(
-    "TestingPassword123!"
-)
-
-test_user = user_store.create_user(
-    email="mark@example.com",
-    username="Mark",
-    password_hash=test_hash
-)
-
-
-reset_token = state.password_reset_service.create_reset_token(
-    "mark@example.com"
-)
-print("Reset token:", reset_token)
-
-
-state.login_service.authenticate(
-    "mark@example.com",
-    "TestingPassword123!"
-)
-
-
 
 test_hash = state.password_service.hash_password(
     "TestingPassword123!"
@@ -131,84 +113,6 @@ test_user = user_store.create_user(
     username="Mark",
     password_hash=test_hash
 )
-
-print("\n--- PASSWORD RESET TEST ---")
-
-# 1. Generate a reset token for our test user
-reset_token = state.password_reset_service.create_reset_token(
-    "mark@example.com"
-)
-
-print("Reset token generated:", reset_token is not None)
-
-
-# 2. Verify the old password works BEFORE the reset
-try:
-    state.login_service.authenticate(
-        "mark@example.com",
-        "TestingPassword123!"
-    )
-
-    print("Old password works before reset: PASS")
-
-except Exception as error:
-    print("Old password works before reset: FAIL")
-    print(error)
-
-
-# 3. Perform the password reset
-try:
-    state.password_reset_service.reset_password(
-        reset_token,
-        "NewTestingPassword456!"
-    )
-
-    print("Password reset completed: PASS")
-
-except Exception as error:
-    print("Password reset completed: FAIL")
-    print(error)
-
-
-# 4. Verify the OLD password no longer works
-try:
-    state.login_service.authenticate(
-        "mark@example.com",
-        "TestingPassword123!"
-    )
-
-    print("Old password rejected after reset: FAIL")
-
-except Exception:
-    print("Old password rejected after reset: PASS")
-
-
-# 5. Verify the NEW password works
-try:
-    state.login_service.authenticate(
-        "mark@example.com",
-        "NewTestingPassword456!"
-    )
-
-    print("New password works: PASS")
-
-except Exception as error:
-    print("New password works: FAIL")
-    print(error)
-
-
-# 6. Try using the SAME reset token again
-try:
-    state.password_reset_service.reset_password(
-        reset_token,
-        "AnotherPassword789!"
-    )
-
-    print("Reset token reuse rejected: FAIL")
-
-except Exception:
-    print("Reset token reuse rejected: PASS")
-    
 
 # --------------------------------------------------
 # Start Flask

@@ -11,6 +11,8 @@ class AuthState:
             reset_token_service,
             password_reset_service,
             mailer,
+            risk_service,
+            captcha_provider,
     ):
         
         self.config = config
@@ -23,3 +25,5 @@ class AuthState:
         self.reset_token_service = reset_token_service
         self.password_reset_service = password_reset_service
         self.mailer = mailer
+        self.risk_service = risk_service
+        self.captcha_provider = captcha_provider

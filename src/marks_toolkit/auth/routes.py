@@ -90,12 +90,46 @@ def login():
     identity = data.get("identity")
     password = data.get("password")
 
+    ip_address = request.remote_addr or "unknown"
+
+    decision = state.risk_service.assess(
+        action="login",
+        identity=identity or "",
+        ip_address=ip_address
+    )
+
+    if decision.blocked:
+        return error_response(
+            code="RATE_LIMITED",
+            message="Too many failed login attempts. Please try again later.",
+            status_code=429
+        )
+
+    if decision.captcha_required:
+        captcha_token = data.get("captcha_token")
+
+        if not state.captcha_provider.verify(
+            captcha_token,
+            remote_ip=ip_address
+        ):
+            return error_response(
+                code="CAPTCHA_REQUIRED",
+                message="Please complete the security check.",
+                status_code=403
+            )
+
     try:
         user = state.login_service.authenticate(
             identity=identity,
             password=password
         )
     except AuthError as error:
+        state.risk_service.record_failure(
+            action="login",
+            identity=identity or "",
+            ip_address=ip_address
+        )
+
         return error_response(
             code=error.code,
             message=error.message,
@@ -103,6 +137,12 @@ def login():
         )
 
     remember = bool(data.get("remember", False))
+
+    state.risk_service.record_success(
+        action="login",
+        identity=identity or "",
+        ip_address=ip_address
+    )
 
     login_user(
         user,
@@ -204,4 +244,14 @@ def reset_password():
 
     return success_response(
         message="Password reset successfully."
+    )
+
+@auth_bp.get("/config")
+def auth_config():
+    state = current_app.extensions["marks_auth"]
+
+    return success_response(
+        data={
+            "captcha_site_key": state.config.captcha_site_key
+        }
     )
