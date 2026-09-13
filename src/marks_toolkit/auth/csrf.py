@@ -26,3 +26,8 @@ class CSRFService:
             return False
 
         return hmac.compare_digest(expected, token)
+
+    def validate_request(self, request):
+        token = request.headers.get("X-CSRF-Token")
+
+        return self.validate_token(token)

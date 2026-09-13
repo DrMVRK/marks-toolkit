@@ -3,7 +3,7 @@ def success_response(data=None, message=None, status_code=200):
         "ok": True
     }
 
-    if message is None:
+    if message is not None:
         response["message"] = message
 
     if data is not None:

@@ -7,7 +7,10 @@ class AuthState:
             identity_service,
             registration_service,
             login_service,
-            csrf_service
+            csrf_service,
+            reset_token_service,
+            password_reset_service,
+            mailer,
     ):
         
         self.config = config
@@ -17,3 +20,6 @@ class AuthState:
         self.registration_service = registration_service
         self.login_service = login_service
         self.csrf_service = csrf_service
+        self.reset_token_service = reset_token_service
+        self.password_reset_service = password_reset_service
+        self.mailer = mailer

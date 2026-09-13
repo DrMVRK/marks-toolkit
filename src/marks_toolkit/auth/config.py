@@ -26,3 +26,12 @@ class AuthConfig:
         self.remember_duration = timedelta(
             days=self.remember_days
         )
+
+        self.reset_token_ttl = app.config.get(
+            "MARKS_AUTH_RESET_TOKEN_TTL",
+            1800
+        )
+
+        self.reset_url = app.config.get(
+            "MARKS_AUTH_RESET_URL"
+        )

@@ -7,6 +7,9 @@ from .identity import IdentityService
 from .registration import RegistrationService
 from .login import LoginService
 from .csrf import CSRFService
+from .reset_tokens import ResetTokenService
+from .password_reset import PasswordResetService
+from .mailer import ConsoleMailer
 
 from flask_login import LoginManager
 
@@ -15,11 +18,20 @@ class AuthKit:
     def __init__(self):
         self.login_manager = LoginManager()
 
-    def init_app(self, app, user_store):
+    def init_app(self, app, user_store, mailer=None):
         if not isinstance(user_store, UserStore):
             raise TypeError("user_store must be an instance of UserStore")
 
+        if mailer is None:
+            mailer = ConsoleMailer()
+
         config = AuthConfig(app)
+
+        if not config.reset_url:
+            raise RuntimeError(
+                "MARKS AuthKit requires MARKS_AUTH_RESET_URL to be configured."
+            )
+
         identity_service = IdentityService()
         csrf_service = CSRFService()
 
@@ -49,14 +61,35 @@ class AuthKit:
             password_service=password_service
         )
 
+        if not app.config.get("SECRET_KEY"):
+            raise RuntimeError(
+                "MARKS Authkit requires Flask SECRET_KEY to be configured."
+            )
+
+        reset_token_service = ResetTokenService(
+            secret_key=app.config["SECRET_KEY"],
+            max_age=config.reset_token_ttl
+        )
+
+        password_reset_service = PasswordResetService(
+            user_store=user_store,
+            identity_service=identity_service,
+            password_service=password_service,
+            reset_token_service=reset_token_service,
+            mailer=mailer
+        )
+
         state = AuthState(
-            config = config, 
+            config=config, 
             user_store=user_store,
             password_service=password_service,
             identity_service=identity_service,
             registration_service=registration_service,
             login_service=login_service,
-            csrf_service=csrf_service
+            csrf_service=csrf_service,
+            reset_token_service=reset_token_service,
+            password_reset_service=password_reset_service,
+            mailer=mailer
         )
 
         app.extensions["marks_auth"] = state
