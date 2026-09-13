@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: marks-toolkit
+Version: 0.1.0
+Summary: Reusable application components and utilities.
+Requires-Python: >=3.11

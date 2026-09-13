@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "marks-toolkit"
+version = "0.1.0"
+description = "Reusable application components and utilities."
+requires-python = ">=3.11"
+dependencies = [
+    "Flask>=3.0",
+    "argon2-cffi>=23.1"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
