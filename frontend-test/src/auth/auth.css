@@ -1,0 +1,32 @@
+.marks-auth-overlay {
+    position: fixed;
+    inset: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(0, 0, 0, 0.6);
+
+    z-index: 1000;
+}
+
+.marks-auth-modal {
+    position: relative;
+
+    width: 100%;
+    max-width: 420px;
+
+    padding: 24px;
+
+    background: white;
+
+    border-radius: 10px;
+}
+
+.marks-auth-close {
+    position: absolute;
+
+    top: 10px;
+    right: 10px;
+}
