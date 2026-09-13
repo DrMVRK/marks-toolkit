@@ -1,8 +1,22 @@
+# Python
 .venv/
 __pycache__/
 *.pyc
-.DS_Store
+
+# Node
+node_modules/
+dist/
+
+# Environment / secrets
 .env
 .env.*
-*.sqlite
-*.db
+!.env.example
+
+# Local auth/session test artifacts
+cookies.txt
+*_cookies.txt
+cookie*.txt
+
+# OS/editor
+.DS_Store
+Thumbs.db
