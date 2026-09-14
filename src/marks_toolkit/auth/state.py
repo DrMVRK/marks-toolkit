@@ -13,6 +13,7 @@ class AuthState:
             mailer,
             risk_service,
             captcha_provider,
+            throttle_service,
     ):
         
         self.config = config
@@ -27,3 +28,4 @@ class AuthState:
         self.mailer = mailer
         self.risk_service = risk_service
         self.captcha_provider = captcha_provider
+        self.throttle_service = throttle_service

@@ -3,7 +3,10 @@ from flask_login import current_user, login_required, login_user, logout_user
 
 from .responses import success_response, error_response
 from .exceptions import AuthError
-from .decorators import csrf_protected
+from .decorators import (
+    csrf_protected,
+    throttle
+)
 
 
 auth_bp = Blueprint('marks_auth', __name__)
@@ -185,6 +188,12 @@ def csrf():
 
 @auth_bp.post("/forgot-password")
 @csrf_protected
+@throttle(
+    action="forgot-password",
+    identities=("ip", "email"),
+    limit_config="forgot_password_limit",
+    window_config="forgot_password_window"
+)
 def forgot_password():
     state = current_app.extensions["marks_auth"]
 
@@ -214,6 +223,12 @@ def forgot_password():
 
 @auth_bp.post("/reset-password")
 @csrf_protected
+@throttle(
+    action="reset-password",
+    identities=("ip",),
+    limit_config="reset_password_limit",
+    window_config="reset_password_window"
+)
 def reset_password():
     state = current_app.extensions["marks_auth"]
 

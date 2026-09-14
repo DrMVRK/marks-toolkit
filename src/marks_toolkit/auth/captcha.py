@@ -22,6 +22,11 @@ class TurnstileCaptchaProvider(CaptchaProvider):
     )
 
     def __init__(self, secret_key, timeout=5.0):
+        if not secret_key:
+            raise ValueError(
+                "Turnstile secret key is required."
+            )
+
         self.secret_key = secret_key
         self.timeout = timeout
 

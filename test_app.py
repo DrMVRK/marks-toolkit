@@ -5,7 +5,7 @@ from flask import Flask
 from marks_toolkit.auth import AuthKit
 from marks_toolkit.auth.user_contract import AuthUser
 from marks_toolkit.auth.user_store import UserStore
-from marks_toolkit.auth.captcha import TestCaptchaProvider
+from marks_toolkit.auth.captcha import TurnstileCaptchaProvider
 
 
 class TestUser(AuthUser):
@@ -95,9 +95,23 @@ app.config["MARKS_AUTH_RESET_URL"] = (
 
 auth_kit = AuthKit()
 user_store = TestUserStore()
-captcha_provider = TestCaptchaProvider()
+captcha_provider = TurnstileCaptchaProvider(
+    secret_key="1x0000000000000000000000000000000AA"
+)
 
-app.config["MARKS_AUTH_CAPTCHA_SITE_KEY"] = "test-site-key"
+app.config["MARKS_AUTH_CAPTCHA_SITE_KEY"] = (
+    "1x00000000000000000000AA"
+)
+app.config["MARKS_AUTH_FORGOT_PASSWORD_LIMIT"] = 3
+app.config["MARKS_AUTH_FORGOT_PASSWORD_WINDOW"] = 900
+
+app.config["MARKS_AUTH_RESET_PASSWORD_LIMIT"] = 3
+app.config["MARKS_AUTH_RESET_PASSWORD_WINDOW"] = 900
+
+app.config["MARKS_AUTH_LOGIN_CAPTCHA_THRESHOLD"] = 2
+app.config["MARKS_AUTH_LOGIN_BLOCK_THRESHOLD"] = 4
+app.config["MARKS_AUTH_LOGIN_FAILURE_WINDOW"] = 900
+
 
 auth_kit.init_app(
     app,

@@ -75,11 +75,27 @@ export default class AuthClient {
         });
     }
 
+    async forgotPassword(email) {
+        return this.post("/forgot-password", {
+            email
+        });
+    }
+
     async logout() {
         return this.post("/logout");
     }
 
     async me() {
         return this.get("/me");
+    }
+
+    async resetPassword({
+        token,
+        password
+    }) {
+        return this.post("/reset-password", {
+            token,
+            password
+        });
     }
 }

@@ -43,3 +43,38 @@ class AuthConfig:
         self.captcha_secret_key = app.config.get(
             "MARKS_AUTH_CAPTCHA_SECRET_KEY"
         )
+
+        self.forgot_password_limit = app.config.get(
+            "MARKS_AUTH_FORGOT_PASSWORD_LIMIT",
+            5
+        )
+
+        self.forgot_password_window = app.config.get(
+            "MARKS_AUTH_FORGOT_PASSWORD_WINDOW",
+            900
+        )
+
+        self.reset_password_limit = app.config.get(
+            "MARKS_AUTH_RESET_PASSWORD_LIMIT",
+            5
+        )
+
+        self.reset_password_window = app.config.get(
+            "MARKS_AUTH_RESET_PASSWORD_WINDOW",
+            900
+        )
+
+        self.login_captcha_threshold = app.config.get(
+            "MARKS_AUTH_LOGIN_CAPTCHA_THRESHOLD",
+            4
+        )
+
+        self.login_block_threshold = app.config.get(
+            "MARKS_AUTH_LOGIN_BLOCK_THRESHOLD",
+            15
+        )
+
+        self.login_failure_window = app.config.get(
+            "MARKS_AUTH_LOGIN_FAILURE_WINDOW",
+            900
+        )

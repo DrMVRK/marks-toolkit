@@ -1,32 +1,133 @@
+import { useState } from "react";
+import { useAuth } from "./AuthProvider";
+
+
 export default function ResetPasswordView({
     resetToken,
     onLogin
 }) {
+    const {
+        client,
+        ready
+    } = useAuth();
+
+    const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+
+    const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(null);
+    const [loading, setLoading] = useState(false);
+
+    async function handleSubmit(event) {
+        event.preventDefault();
+
+        if (!ready || loading) {
+            return;
+        }
+
+        setError(null);
+        setSuccess(null);
+
+        if (!resetToken) {
+            setError({
+                code: "MISSING_RESET_TOKEN",
+                message: "This password reset link is invalid."
+            });
+
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            setError({
+                code: "PASSWORD_MISMATCH",
+                message: "Passwords do not match."
+            });
+
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            const response = await client.resetPassword({
+                token: resetToken,
+                password
+            });
+
+            if (!response.ok) {
+                setError(response.error);
+                return;
+            }
+
+            setSuccess(
+                response.message ||
+                "Password reset successfully."
+            );
+
+        } catch (requestError) {
+            setError({
+                code: "NETWORK_ERROR",
+                message: "Unable to contact the authentication server."
+            });
+
+        } finally {
+            setLoading(false);
+        }
+    }
+
     return (
-        <div>
+        <form onSubmit={handleSubmit}>
             <h2>Reset Password</h2>
 
             <input
                 type="password"
                 placeholder="New password"
+                value={password}
+                onChange={(event) =>
+                    setPassword(event.target.value)
+                }
+                autoComplete="new-password"
             />
-
-            <button type="button">
-                Reset Password
-            </button>
-
-            <button
-                type="button"
-                onClick={onLogin}
-            >
-                Back to login
-            </button>
 
             <input
-                type="hidden"
-                value={resetToken || ""}
-                readOnly
+                type="password"
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                onChange={(event) =>
+                    setConfirmPassword(event.target.value)
+                }
+                autoComplete="new-password"
             />
-        </div>
+
+            {error && (
+                <p className="marks-auth-error">
+                    {error.message}
+                </p>
+            )}
+
+            {success && (
+                <p className="marks-auth-success">
+                    {success}
+                </p>
+            )}
+
+            <button
+                type="submit"
+                disabled={!ready || loading}
+            >
+                {loading
+                    ? "Resetting password..."
+                    : "Reset Password"}
+            </button>
+
+            <div className="marks-auth-actions">
+                <button
+                    type="button"
+                    onClick={onLogin}
+                >
+                    Back to Login
+                </button>
+            </div>
+        </form>
     );
 }

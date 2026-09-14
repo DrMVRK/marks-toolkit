@@ -8,10 +8,15 @@
 
     padding: 20px;
 
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.65);
 
     z-index: 1000;
 }
+
+
+/* -----------------------------
+   Modal container
+----------------------------- */
 
 .marks-auth-modal {
     position: relative;
@@ -21,12 +26,22 @@
 
     padding: 32px;
 
-    background: white;
+    box-sizing: border-box;
 
+    background: #ffffff;
+    color: #1f2937;
+
+    border: 1px solid #d1d5db;
     border-radius: 12px;
 
-    box-sizing: border-box;
+    box-shadow:
+        0 20px 40px rgba(0, 0, 0, 0.25);
 }
+
+
+/* -----------------------------
+   Close button
+----------------------------- */
 
 .marks-auth-close {
     position: absolute;
@@ -34,8 +49,20 @@
     top: 12px;
     right: 12px;
 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 32px;
+    height: 32px;
+
+    padding: 0;
+
     border: none;
+    border-radius: 6px;
+
     background: transparent;
+    color: #6b7280;
 
     font-size: 24px;
     line-height: 1;
@@ -43,9 +70,14 @@
     cursor: pointer;
 }
 
+.marks-auth-close:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
 
 /* -----------------------------
-   Shared auth form layout
+   Shared form layout
 ----------------------------- */
 
 .marks-auth-modal form,
@@ -59,7 +91,13 @@
 .marks-auth-modal h2 {
     margin: 0 0 8px 0;
 
+    color: #111827;
+
     text-align: center;
+}
+
+.marks-auth-modal p {
+    color: #4b5563;
 }
 
 
@@ -76,10 +114,28 @@
 
     box-sizing: border-box;
 
-    border: 1px solid #ccc;
+    background: #ffffff;
+    color: #111827;
+
+    border: 1px solid #cbd5e1;
     border-radius: 8px;
 
     font-size: 16px;
+
+    outline: none;
+}
+
+.marks-auth-modal input::placeholder {
+    color: #9ca3af;
+}
+
+.marks-auth-modal input[type="text"]:focus,
+.marks-auth-modal input[type="email"]:focus,
+.marks-auth-modal input[type="password"]:focus {
+    border-color: #2563eb;
+
+    box-shadow:
+        0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
 
@@ -92,6 +148,10 @@
     align-items: center;
 
     gap: 8px;
+
+    color: #374151;
+
+    font-size: 14px;
 }
 
 .marks-auth-modal input[type="checkbox"] {
@@ -100,38 +160,35 @@
 
 
 /* -----------------------------
-   Buttons
+   Primary buttons
 ----------------------------- */
 
-.marks-auth-modal button {
-    padding: 11px 14px;
+.marks-auth-modal button[type="submit"] {
+    width: 100%;
 
+    padding: 12px 14px;
+
+    border: none;
     border-radius: 8px;
 
+    background: #2563eb;
+    color: #ffffff;
+
     font-size: 15px;
+    font-weight: 600;
 
     cursor: pointer;
 }
 
-.marks-auth-modal button[type="submit"] {
-    width: 100%;
+.marks-auth-modal button[type="submit"]:hover:not(:disabled) {
+    background: #1d4ed8;
 }
 
-.marks-auth-modal button:disabled {
+.marks-auth-modal button[type="submit"]:disabled {
+    background: #93c5fd;
+
     cursor: not-allowed;
-    opacity: 0.6;
-}
-
-
-/* -----------------------------
-   Error messages
------------------------------ */
-
-.marks-auth-error {
-    margin: 0;
-
-    font-size: 14px;
-    text-align: center;
+    opacity: 0.7;
 }
 
 
@@ -146,10 +203,68 @@
     gap: 8px;
 }
 
+.marks-auth-actions button {
+    width: 100%;
+
+    padding: 10px 12px;
+
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+
+    background: #f9fafb;
+    color: #374151;
+
+    font-size: 14px;
+    font-weight: 500;
+
+    cursor: pointer;
+}
+
+.marks-auth-actions button:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+
+/* -----------------------------
+   Status messages
+----------------------------- */
+
+.marks-auth-error {
+    margin: 0;
+
+    padding: 10px 12px;
+
+    background: #fef2f2;
+    color: #b91c1c;
+
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+
+    font-size: 14px;
+    text-align: center;
+}
 
 .marks-auth-success {
     margin: 0;
 
+    padding: 10px 12px;
+
+    background: #f0fdf4;
+    color: #166534;
+
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+
     font-size: 14px;
     text-align: center;
+}
+
+
+.marks-auth-captcha {
+    display: flex;
+    justify-content: center;
+
+    width: 100%;
+    min-height: 65px;
 }

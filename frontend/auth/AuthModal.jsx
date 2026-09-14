@@ -23,13 +23,36 @@ export default function AuthModal({
     }, [open, initialView]);
 
     useEffect(() => {
-        if (authenticated && open) {
+        if (authenticated && open && view === "login") {
             onClose();
         }
-    }, [authenticated, open, onClose]);
+    }, [authenticated, open, view, onClose]);
+
+    useEffect(() => {
+        function handleKeyDown(event) {
+            if (event.key === "Escape" && open) {
+                onClose();
+            }
+        }
+
+        document.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            document.removeEventListener(
+                "keydown",
+                handleKeyDown
+            );
+        };
+    }, [open, onClose]);
 
     if (!open) {
         return null;
+    }
+
+    function handleOverlayClick(event) {
+        if (event.target === event.currentTarget) {
+            onClose();
+        }
     }
 
     let content = null;
@@ -71,12 +94,20 @@ export default function AuthModal({
     }
 
     return (
-        <div className="marks-auth-overlay">
-            <div className="marks-auth-modal">
+        <div
+            className="marks-auth-overlay"
+            onClick={handleOverlayClick}
+        >
+            <div
+                className="marks-auth-modal"
+                role="dialog"
+                aria-modal="true"
+            >
                 <button
                     type="button"
                     className="marks-auth-close"
                     onClick={onClose}
+                    aria-label="Close authentication dialog"
                 >
                     ×
                 </button>

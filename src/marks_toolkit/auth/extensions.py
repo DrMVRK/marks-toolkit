@@ -11,7 +11,7 @@ from .reset_tokens import ResetTokenService
 from .password_reset import PasswordResetService
 from .mailer import ConsoleMailer
 from .risk import RiskService
-from .captcha import TestCaptchaProvider
+from .throttle import ThrottleService
 
 from flask_login import LoginManager
 
@@ -35,9 +35,19 @@ class AuthKit:
 
         config = AuthConfig(app)
 
+        if not app.config.get("SECRET_KEY"):
+            raise RuntimeError(
+                "MARKS AuthKit requires Flask SECRET_KEY to be configured."
+            )
+
         if not config.reset_url:
             raise RuntimeError(
                 "MARKS AuthKit requires MARKS_AUTH_RESET_URL to be configured."
+            )
+
+        if captcha_provider is None:
+            raise RuntimeError(
+                "MARKS AuthKit requires an explicit CAPTCHA provider."
             )
 
         identity_service = IdentityService()
@@ -70,11 +80,6 @@ class AuthKit:
             identity_service=identity_service
         )
 
-        if not app.config.get("SECRET_KEY"):
-            raise RuntimeError(
-                "MARKS Authkit requires Flask SECRET_KEY to be configured."
-            )
-
         reset_token_service = ResetTokenService(
             secret_key=app.config["SECRET_KEY"],
             max_age=config.reset_token_ttl
@@ -89,10 +94,12 @@ class AuthKit:
         )
 
         risk_service = RiskService(
-            captcha_threshold=4,
-            block_threshold=15,
-            failure_window_seconds=900
+            captcha_threshold=config.login_captcha_threshold,
+            block_threshold=config.login_block_threshold,
+            failure_window_seconds=config.login_failure_window
         )
+
+        throttle_service = ThrottleService()
 
         state = AuthState(
             config=config, 
@@ -106,7 +113,8 @@ class AuthKit:
             password_reset_service=password_reset_service,
             mailer=mailer,
             risk_service=risk_service,
-            captcha_provider=captcha_provider
+            captcha_provider=captcha_provider,
+            throttle_service=throttle_service,
         )
 
         app.extensions["marks_auth"] = state

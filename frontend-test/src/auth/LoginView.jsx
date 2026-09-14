@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "./AuthProvider";
+import CaptchaChallenge from "./CaptchaChallenge";
 
 
 export default function LoginView({
@@ -8,6 +9,7 @@ export default function LoginView({
 }) {
     const {
         client,
+        config,
         ready,
         handleLogin
     } = useAuth();
@@ -18,6 +20,12 @@ export default function LoginView({
 
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
+
+    const [captchaRequired, setCaptchaRequired] =
+        useState(false);
+
+    const [captchaToken, setCaptchaToken] =
+        useState(null);
 
     async function handleSubmit(event) {
         event.preventDefault();
@@ -33,10 +41,22 @@ export default function LoginView({
             const response = await client.login({
                 identity,
                 password,
-                remember
+                remember,
+                captchaToken
             });
 
             if (!response.ok) {
+                if (
+                    response.error?.code ===
+                    "CAPTCHA_REQUIRED"
+                ) {
+                    setCaptchaRequired(true);
+                    setCaptchaToken(null);
+                    setError(null);
+
+                    return;
+                }
+
                 setError(response.error);
                 return;
             }
@@ -89,6 +109,31 @@ export default function LoginView({
 
                 Remember me
             </label>
+            
+            {captchaRequired && (
+                <CaptchaChallenge
+                    siteKey={config?.captcha_site_key}
+
+                    onSuccess={(token) => {
+                        setCaptchaToken(token);
+                        setError(null);
+                    }}
+
+                    onExpired={() => {
+                        setCaptchaToken(null);
+                    }}
+
+                    onError={() => {
+                        setCaptchaToken(null);
+
+                        setError({
+                            code: "CAPTCHA_ERROR",
+                            message:
+                                "The security check could not be completed."
+                        });
+                    }}
+                />
+            )}
 
             {error && (
                 <p className="marks-auth-error">
@@ -98,7 +143,14 @@ export default function LoginView({
 
             <button
                 type="submit"
-                disabled={!ready || loading}
+                disabled={
+                    !ready ||
+                    loading ||
+                    (
+                        captchaRequired &&
+                        !captchaToken
+                    )
+                }
             >
                 {loading ? "Signing in..." : "Sign In"}
             </button>
