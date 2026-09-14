@@ -6,6 +6,8 @@
     align-items: center;
     justify-content: center;
 
+    padding: 20px;
+
     background: rgba(0, 0, 0, 0.6);
 
     z-index: 1000;
@@ -17,16 +19,137 @@
     width: 100%;
     max-width: 420px;
 
-    padding: 24px;
+    padding: 32px;
 
     background: white;
 
-    border-radius: 10px;
+    border-radius: 12px;
+
+    box-sizing: border-box;
 }
 
 .marks-auth-close {
     position: absolute;
 
-    top: 10px;
-    right: 10px;
+    top: 12px;
+    right: 12px;
+
+    border: none;
+    background: transparent;
+
+    font-size: 24px;
+    line-height: 1;
+
+    cursor: pointer;
+}
+
+
+/* -----------------------------
+   Shared auth form layout
+----------------------------- */
+
+.marks-auth-modal form,
+.marks-auth-view {
+    display: flex;
+    flex-direction: column;
+
+    gap: 16px;
+}
+
+.marks-auth-modal h2 {
+    margin: 0 0 8px 0;
+
+    text-align: center;
+}
+
+
+/* -----------------------------
+   Inputs
+----------------------------- */
+
+.marks-auth-modal input[type="text"],
+.marks-auth-modal input[type="email"],
+.marks-auth-modal input[type="password"] {
+    width: 100%;
+
+    padding: 12px 14px;
+
+    box-sizing: border-box;
+
+    border: 1px solid #ccc;
+    border-radius: 8px;
+
+    font-size: 16px;
+}
+
+
+/* -----------------------------
+   Checkbox row
+----------------------------- */
+
+.marks-auth-modal label {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+}
+
+.marks-auth-modal input[type="checkbox"] {
+    margin: 0;
+}
+
+
+/* -----------------------------
+   Buttons
+----------------------------- */
+
+.marks-auth-modal button {
+    padding: 11px 14px;
+
+    border-radius: 8px;
+
+    font-size: 15px;
+
+    cursor: pointer;
+}
+
+.marks-auth-modal button[type="submit"] {
+    width: 100%;
+}
+
+.marks-auth-modal button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+
+/* -----------------------------
+   Error messages
+----------------------------- */
+
+.marks-auth-error {
+    margin: 0;
+
+    font-size: 14px;
+    text-align: center;
+}
+
+
+/* -----------------------------
+   Secondary auth actions
+----------------------------- */
+
+.marks-auth-actions {
+    display: flex;
+    flex-direction: column;
+
+    gap: 8px;
+}
+
+
+.marks-auth-success {
+    margin: 0;
+
+    font-size: 14px;
+    text-align: center;
 }

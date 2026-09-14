@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "./AuthProvider";
 
 import LoginView from "./LoginView";
 import RegisterView from "./RegisterView";
@@ -13,12 +14,19 @@ export default function AuthModal({
     resetToken = null
 }) {
     const [view, setView] = useState(initialView);
+    const { authenticated } = useAuth();
 
     useEffect(() => {
         if (open) {
             setView(initialView);
         }
     }, [open, initialView]);
+
+    useEffect(() => {
+        if (authenticated && open) {
+            onClose();
+        }
+    }, [authenticated, open, onClose]);
 
     if (!open) {
         return null;
@@ -30,7 +38,9 @@ export default function AuthModal({
         content = (
             <LoginView
                 onRegister={() => setView("register")}
-                onForgotPassword={() => setView("forgot-password")}
+                onForgotPassword={() =>
+                    setView("forgot-password")
+                }
             />
         );
     }

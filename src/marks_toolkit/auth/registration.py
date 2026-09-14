@@ -16,6 +16,9 @@ class RegistrationService:
 
             email = self.identity_service.normalize_email(email)
             username = self.identity_service.normalize_username(username)
+            email_key = email.casefold()
+            username_key = self.identity_service.username_key(username)
+
         except ValueError as error:
             raise InvalidIdentityError(str(error)) from error
 
@@ -25,9 +28,14 @@ class RegistrationService:
             raise WeakPasswordError(str(error)) from error
         
 
-        if self.user_store.identity_exists(email, username):
+        if self.user_store.email_exists(email_key):
             raise IdentityUnavailableError(
-                "Email or Username is already in use."
+                "Email or username is already in use."
+            )
+
+        if self.user_store.username_exists(username_key):
+            raise IdentityUnavailableError(
+                "Email or username is already in use."
             )
         
         return self.user_store.create_user(

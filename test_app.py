@@ -32,9 +32,12 @@ class TestUserStore(UserStore):
     def __init__(self):
         self.users = []
 
-    def find_by_identity(self, identity):
+    def find_by_identity(self, identity_key):
         for user in self.users:
-            if user.email == identity or user.username == identity:
+            if (
+                user.email.casefold() == identity_key
+                or user.username.casefold() == identity_key
+            ):
                 return user
 
         return None
@@ -46,9 +49,15 @@ class TestUserStore(UserStore):
 
         return None
 
-    def identity_exists(self, email, username):
+    def email_exists(self, email_key):
         return any(
-            user.email == email or user.username == username
+            user.email.casefold() == email_key
+            for user in self.users
+        )
+
+    def username_exists(self, username_key):
+        return any(
+            user.username.casefold() == username_key
             for user in self.users
         )
 

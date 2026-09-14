@@ -1,54 +1,70 @@
-import {
+import { useState } from "react";
+
+import AuthModal from "./auth/AuthModal";
+import { 
     AuthProvider,
     useAuth
 } from "./auth/AuthProvider";
 
+import "./auth/auth.css";
 
 function AuthStatus() {
     const {
-        ready,
-        config,
-        initializationError
+        authenticated,
+        user,
+        logout
     } = useAuth();
 
-    if (initializationError) {
-        return (
-            <pre>
-                {initializationError.message}
-            </pre>
-        );
-    }
-
-    if (!ready) {
-        return <p>Initializing auth...</p>;
-    }
-
     return (
-        <pre>
-            {JSON.stringify(
-                {
-                    ready,
-                    config
-                },
-                null,
-                2
+        <div>
+            <pre>
+                {JSON.stringify(
+                    {
+                        authenticated,
+                        user
+                    },
+                    null,
+                    2
+                )}
+            </pre>
+
+            {authenticated && (
+                <button
+                    type="button"
+                    onClick={logout}
+                >
+                    Log Out
+                </button>
             )}
-        </pre>
+        </div>
     );
 }
 
-
 function App() {
+    const [authOpen, setAuthOpen] = useState(false);
+    const [user, setUser] = useState(null);
+
     return (
         <AuthProvider>
             <div style={{ padding: "40px" }}>
-                <h1>MARKS AuthProvider Test</h1>
+                <h1>MARKS Toolkit Auth Test</h1>
 
                 <AuthStatus />
+
+                <button
+                    type="button"
+                    onClick={() => setAuthOpen(true)}
+                >
+                    Open Auth
+                </button>
+
+                <AuthModal
+                    open={authOpen}
+                    onClose={() => setAuthOpen(false)}
+                />
             </div>
         </AuthProvider>
     );
 }
-
 
 export default App;

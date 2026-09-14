@@ -35,3 +35,20 @@ class IdentityService:
             raise ValueError("Username can only contain letters, numbers, dots, underscores, and hyphens.")
         
         return username
+
+
+    def username_key(self, username):
+        username = self.normalize_username(username)
+        return username.casefold()
+
+
+    def identity_key(self, identity):
+        if not isinstance(identity, str):
+            raise ValueError("Identity must be a string.")
+
+        identity = identity.strip()
+
+        if not identity:
+            raise ValueError("Identity is required.")
+
+        return identity.casefold()

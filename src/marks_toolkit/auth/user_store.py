@@ -12,7 +12,11 @@ class UserStore(ABC):
         pass
 
     @abstractmethod
-    def identity_exists(self, email, username):
+    def email_exists(self, email_key):
+        pass
+
+    @abstractmethod
+    def username_exists(self, username_key):
         pass
 
     @abstractmethod

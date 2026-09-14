@@ -43,4 +43,43 @@ export default class AuthClient {
 
         return this.config;
     }
+
+    async login({
+        identity,
+        password,
+        remember = false,
+        captchaToken = null
+    }) {
+        const data = {
+            identity,
+            password,
+            remember
+        };
+
+        if (captchaToken) {
+            data.captcha_token = captchaToken;
+        }
+
+        return this.post("/login", data);
+    }
+
+    async register({
+        email,
+        username,
+        password
+    }) {
+        return this.post("/register", {
+            email,
+            username,
+            password
+        });
+    }
+
+    async logout() {
+        return this.post("/logout");
+    }
+
+    async me() {
+        return this.get("/me");
+    }
 }

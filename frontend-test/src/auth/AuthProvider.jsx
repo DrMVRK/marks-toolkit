@@ -23,16 +23,29 @@ export function AuthProvider({
 
     const [ready, setReady] = useState(false);
     const [config, setConfig] = useState(null);
+    const [user, setUser] = useState(null);
+    
     const [initializationError, setInitializationError] =
         useState(null);
 
     useEffect(() => {
         async function initializeAuth() {
             try {
-                const loadedConfig =
-                    await client.initialize();
+                const loadedConfig = await client.initialize();
+                const meResponse = await client.me();
 
                 setConfig(loadedConfig);
+
+                if (
+                    meResponse.ok &&
+                    meResponse.data &&
+                    meResponse.data.authenticated
+                ) {
+                    setUser(meResponse.data.user);
+                } else {
+                    setUser(null);
+                }
+
                 setInitializationError(null);
                 setReady(true);
 
@@ -45,11 +58,29 @@ export function AuthProvider({
         initializeAuth();
     }, [client]);
 
+    function handleLogin(userData) {
+        setUser(userData);
+    }
+
+    async function logout() {
+        const response = await client.logout();
+
+        if (response.ok) {
+            setUser(null);
+        }
+
+        return response;
+    }
+
     const value = {
         client,
         config,
         ready,
-        initializationError
+        user,
+        authenticated: user !== null,
+        handleLogin,
+        initializationError,
+        logout
     };
 
     return (

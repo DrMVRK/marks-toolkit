@@ -66,7 +66,8 @@ class AuthKit:
 
         login_service = LoginService(
             user_store=user_store,
-            password_service=password_service
+            password_service=password_service,
+            identity_service=identity_service
         )
 
         if not app.config.get("SECRET_KEY"):

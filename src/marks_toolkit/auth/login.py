@@ -7,12 +7,23 @@ class LoginError(AuthError):
 
 
 class LoginService:
-    def __init__(self, user_store, password_service):
+    def __init__(
+            self, 
+            user_store, 
+            password_service,
+            identity_service
+    ):
         self.user_store = user_store
         self.password_service = password_service
+        self.identity_service = identity_service
 
     def authenticate(self, identity, password):
-        user = self.user_store.find_by_identity(identity)
+        try:
+            identity_key = self.identity_service.identity_key(identity)
+        except ValueError:
+            raise LoginError("Invalid login credentials.")
+
+        user = self.user_store.find_by_identity(identity_key)
 
         if user is None:
             raise LoginError("Invalid login credentials.")
