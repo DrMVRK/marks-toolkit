@@ -97,7 +97,8 @@ def throttle(
 
             for throttle_key in throttle_keys:
                 state.throttle_service.record(
-                    throttle_key
+                    throttle_key,
+                    window
                 )
 
             return view_function(*args, **kwargs)

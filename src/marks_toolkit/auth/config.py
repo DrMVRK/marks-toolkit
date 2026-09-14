@@ -78,3 +78,42 @@ class AuthConfig:
             "MARKS_AUTH_LOGIN_FAILURE_WINDOW",
             900
         )
+
+        self.security_store_backend = app.config.get(
+            "MARKS_AUTH_SECURITY_STORE",
+            "memory"
+        )
+
+        self.redis_url = app.config.get(
+            "MARKS_AUTH_REDIS_URL"
+        )
+
+        self.cookie_secure = app.config.get(
+            "MARKS_AUTH_COOKIE_SECURE",
+            False
+        )
+
+        self.cookie_samesite = app.config.get(
+            "MARKS_AUTH_COOKIE_SAMESITE",
+            "Lax"
+        )
+
+        self.session_protection = app.config.get(
+            "MARKS_AUTH_SESSION_PROTECTION",
+            "strong"
+        )
+
+        self.proxy_fix_enabled = app.config.get(
+            "MARKS_AUTH_PROXY_FIX_ENABLED",
+            False
+        )
+
+        self.proxy_fix_x_for = app.config.get(
+            "MARKS_AUTH_PROXY_FIX_X_FOR",
+            1
+        )
+
+        self.proxy_fix_x_proto = app.config.get(
+            "MARKS_AUTH_PROXY_FIX_X_PROTO",
+            1
+        )

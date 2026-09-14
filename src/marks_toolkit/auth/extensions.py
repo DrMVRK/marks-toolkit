@@ -12,8 +12,13 @@ from .password_reset import PasswordResetService
 from .mailer import ConsoleMailer
 from .risk import RiskService
 from .throttle import ThrottleService
+from .security_store import (
+    MemorySecurityStore,
+    RedisSecurityStore
+)
 
 from flask_login import LoginManager
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 
 class AuthKit:
@@ -35,6 +40,13 @@ class AuthKit:
 
         config = AuthConfig(app)
 
+        if config.proxy_fix_enabled:
+            app.wsgi_app = ProxyFix(
+                app.wsgi_app,
+                x_for=config.proxy_fix_x_for,
+                x_proto=config.proxy_fix_x_proto
+            )
+
         if not app.config.get("SECRET_KEY"):
             raise RuntimeError(
                 "MARKS AuthKit requires Flask SECRET_KEY to be configured."
@@ -55,13 +67,43 @@ class AuthKit:
 
         self.login_manager.init_app(app)
 
-        app.config["REMEMBER_COOKIE_DURATION"] = config.remember_duration
-        app.config.setdefault("REMEMBER_COOKIE_HTTPONLY", True)
-        app.config.setdefault("REMEMBER_COOKIE_SAMESITE", "Lax")
+        self.login_manager.session_protection = (
+            config.session_protection
+        )
+
+        app.config["REMEMBER_COOKIE_DURATION"] = (
+            config.remember_duration
+        )
+
+        app.config["REMEMBER_COOKIE_HTTPONLY"] = True
+        app.config["REMEMBER_COOKIE_SAMESITE"] = (
+            config.cookie_samesite
+        )
+        app.config["REMEMBER_COOKIE_SECURE"] = (
+            config.cookie_secure
+        )
+
+        app.config["SESSION_COOKIE_HTTPONLY"] = True
+        app.config["SESSION_COOKIE_SAMESITE"] = (
+            config.cookie_samesite
+        )
+        app.config["SESSION_COOKIE_SECURE"] = (
+            config.cookie_secure
+        )
 
         @self.login_manager.user_loader
         def load_user(auth_id):
             return user_store.find_by_auth_id(auth_id)
+
+        @self.login_manager.unauthorized_handler
+        def unauthorized():
+            return {
+                "ok": False,
+                "error": {
+                    "code": "AUTH_REQUIRED",
+                    "message": "Authentication is required."
+                }
+            }, 401
         
         password_service = PasswordService(
             min_length = config.password_min_length,
@@ -93,13 +135,36 @@ class AuthKit:
             mailer=mailer
         )
 
+        if config.security_store_backend == "memory":
+            security_store = MemorySecurityStore()
+
+        elif config.security_store_backend == "redis":
+            if not config.redis_url:
+                raise RuntimeError(
+                    "MARKS_AUTH_REDIS_URL is required "
+                    "when using the Redis security store."
+                )
+
+            security_store = RedisSecurityStore(
+                redis_url=config.redis_url
+            )
+
+        else:
+            raise RuntimeError(
+                "Unsupported MARKS_AUTH_SECURITY_STORE: "
+                f"{config.security_store_backend}"
+            )
+
         risk_service = RiskService(
+            security_store=security_store,
             captcha_threshold=config.login_captcha_threshold,
             block_threshold=config.login_block_threshold,
             failure_window_seconds=config.login_failure_window
         )
 
-        throttle_service = ThrottleService()
+        throttle_service = ThrottleService(
+            security_store=security_store
+        )
 
         state = AuthState(
             config=config, 
@@ -115,6 +180,7 @@ class AuthKit:
             risk_service=risk_service,
             captcha_provider=captcha_provider,
             throttle_service=throttle_service,
+            security_store=security_store,
         )
 
         app.extensions["marks_auth"] = state

@@ -1,24 +1,6 @@
-import time
-
-
 class ThrottleService:
-    def __init__(self):
-        self.attempts = {}
-
-    def _prune(self, key, window_seconds):
-        now = time.time()
-
-        attempts = self.attempts.get(key, [])
-
-        recent_attempts = [
-            timestamp
-            for timestamp in attempts
-            if now - timestamp <= window_seconds
-        ]
-
-        self.attempts[key] = recent_attempts
-
-        return recent_attempts
+    def __init__(self, security_store):
+        self.security_store = security_store
 
     def is_blocked(
         self,
@@ -26,20 +8,24 @@ class ThrottleService:
         limit,
         window_seconds
     ):
-        recent_attempts = self._prune(
+        attempt_count = (
+            self.security_store.count_attempts(
+                key,
+                window_seconds
+            )
+        )
+
+        return attempt_count >= limit
+
+    def record(
+        self,
+        key,
+        window_seconds
+    ):
+        self.security_store.add_attempt(
             key,
             window_seconds
         )
 
-        return len(recent_attempts) >= limit
-
-    def record(self, key):
-        now = time.time()
-
-        if key not in self.attempts:
-            self.attempts[key] = []
-
-        self.attempts[key].append(now)
-
     def clear(self, key):
-        self.attempts.pop(key, None)
+        self.security_store.clear(key)

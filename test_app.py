@@ -112,6 +112,10 @@ app.config["MARKS_AUTH_LOGIN_CAPTCHA_THRESHOLD"] = 2
 app.config["MARKS_AUTH_LOGIN_BLOCK_THRESHOLD"] = 4
 app.config["MARKS_AUTH_LOGIN_FAILURE_WINDOW"] = 900
 
+app.config["MARKS_AUTH_COOKIE_SECURE"] = False
+
+app.config["MARKS_AUTH_PROXY_FIX_ENABLED"] = False
+
 
 auth_kit.init_app(
     app,
