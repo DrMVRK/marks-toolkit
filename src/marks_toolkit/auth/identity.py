@@ -1,5 +1,5 @@
 import re
-
+from email_validator import EmailNotValidError, validate_email
 
 class IdentityService:
     USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
@@ -8,15 +8,23 @@ class IdentityService:
         if not isinstance(email, str):
             raise ValueError("Email must be a string.")
 
-        email = email.strip().lower()
+        email = email.strip()
 
         if not email:
             raise ValueError("Email is required.")
 
-        if "@" not in email:
-            raise ValueError("Invalid email address.")
+        try:
+            validated = validate_email(
+                email,
+                check_deliverability=False
+            )
 
-        return email
+        except EmailNotValidError:
+            raise ValueError(
+                "Invalid email address."
+            )
+
+        return validated.normalized
 
 
     def normalize_username(self, username):

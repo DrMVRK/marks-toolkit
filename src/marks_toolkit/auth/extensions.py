@@ -16,6 +16,7 @@ from .security_store import (
     MemorySecurityStore,
     RedisSecurityStore
 )
+from .audit import StandardAuditLogger
 
 from flask_login import LoginManager
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -166,6 +167,8 @@ class AuthKit:
             security_store=security_store
         )
 
+        audit_logger = StandardAuditLogger()
+
         state = AuthState(
             config=config, 
             user_store=user_store,
@@ -181,6 +184,7 @@ class AuthKit:
             captcha_provider=captcha_provider,
             throttle_service=throttle_service,
             security_store=security_store,
+            audit_logger=audit_logger,
         )
 
         app.extensions["marks_auth"] = state

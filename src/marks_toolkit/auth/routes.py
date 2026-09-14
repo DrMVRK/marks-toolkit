@@ -1,20 +1,28 @@
 from flask import Blueprint, current_app, request
-from flask_login import current_user, login_required, login_user, logout_user
+from flask_login import (
+    current_user,
+    login_required,
+    login_user,
+    logout_user,
+)
 
 from .responses import success_response, error_response
 from .exceptions import AuthError
 from .decorators import (
     csrf_protected,
-    throttle
+    throttle,
 )
 
 
-auth_bp = Blueprint('marks_auth', __name__)
+auth_bp = Blueprint("marks_auth", __name__)
 
 
 @auth_bp.get("/test")
 def test_route():
-    return {"ok": True, "message":"MARKS AuthKit is working"}
+    return {
+        "ok": True,
+        "message": "MARKS AuthKit is working",
+    }
 
 
 @auth_bp.get("/me")
@@ -23,7 +31,7 @@ def me():
         return success_response(
             data={
                 "authenticated": False,
-                "user": None
+                "user": None,
             }
         )
 
@@ -33,8 +41,8 @@ def me():
             "user": {
                 "auth_id": current_user.auth_id,
                 "username": current_user.username,
-                "email": current_user.email
-            }
+                "email": current_user.email,
+            },
         }
     )
 
@@ -50,7 +58,7 @@ def register():
         return error_response(
             code="INVALID_REQUEST",
             message="Request body must contain a JSON object.",
-            status_code=400
+            status_code=400,
         )
 
     email = data.get("email")
@@ -61,18 +69,19 @@ def register():
         state.registration_service.register(
             email=email,
             username=username,
-            password=password
+            password=password,
         )
+
     except AuthError as error:
         return error_response(
             code=error.code,
             message=error.message,
-            status_code=error.status_code
+            status_code=error.status_code,
         )
 
     return success_response(
         message="User registered successfully.",
-        status_code=201
+        status_code=201,
     )
 
 
@@ -87,7 +96,7 @@ def login():
         return error_response(
             code="INVALID_REQUEST",
             message="Request body must contain a JSON object.",
-            status_code=400
+            status_code=400,
         )
 
     identity = data.get("identity")
@@ -98,14 +107,24 @@ def login():
     decision = state.risk_service.assess(
         action="login",
         identity=identity or "",
-        ip_address=ip_address
+        ip_address=ip_address,
     )
 
     if decision.blocked:
+        state.audit_logger.log(
+            "login_rate_limited",
+            identity=identity or "",
+            ip_address=ip_address,
+            risk_score=decision.score,
+        )
+
         return error_response(
             code="RATE_LIMITED",
-            message="Too many failed login attempts. Please try again later.",
-            status_code=429
+            message=(
+                "Too many failed login attempts. "
+                "Please try again later."
+            ),
+            status_code=429,
         )
 
     if decision.captcha_required:
@@ -113,52 +132,77 @@ def login():
 
         if not state.captcha_provider.verify(
             captcha_token,
-            remote_ip=ip_address
+            remote_ip=ip_address,
         ):
+            state.audit_logger.log(
+                "captcha_required",
+                identity=identity or "",
+                ip_address=ip_address,
+                risk_score=decision.score,
+            )
+
             return error_response(
                 code="CAPTCHA_REQUIRED",
                 message="Please complete the security check.",
-                status_code=403
+                status_code=403,
             )
 
     try:
         user = state.login_service.authenticate(
             identity=identity,
-            password=password
+            password=password,
         )
+
     except AuthError as error:
         state.risk_service.record_failure(
             action="login",
             identity=identity or "",
-            ip_address=ip_address
+            ip_address=ip_address,
+        )
+
+        state.audit_logger.log(
+            "login_failure",
+            identity=identity or "",
+            ip_address=ip_address,
+            error_code=error.code,
         )
 
         return error_response(
             code=error.code,
             message=error.message,
-            status_code=error.status_code
+            status_code=error.status_code,
         )
 
-    remember = bool(data.get("remember", False))
+    remember = bool(
+        data.get("remember", False)
+    )
 
     state.risk_service.record_success(
         action="login",
         identity=identity or "",
-        ip_address=ip_address
+        ip_address=ip_address,
     )
 
     login_user(
         user,
-        remember=remember
+        remember=remember,
+    )
+
+    state.audit_logger.log(
+        "login_success",
+        auth_id=user.auth_id,
+        username=user.username,
+        ip_address=ip_address,
+        remember=remember,
     )
 
     return success_response(
         data={
             "auth_id": user.auth_id,
             "username": user.username,
-            "email": user.email
+            "email": user.email,
         },
-        message="Login successful."
+        message="Login successful.",
     )
 
 
@@ -181,7 +225,7 @@ def csrf():
 
     return success_response(
         data={
-            "csrf_token": token
+            "csrf_token": token,
         }
     )
 
@@ -192,7 +236,7 @@ def csrf():
     action="forgot-password",
     identities=("ip", "email"),
     limit_config="forgot_password_limit",
-    window_config="forgot_password_window"
+    window_config="forgot_password_window",
 )
 def forgot_password():
     state = current_app.extensions["marks_auth"]
@@ -203,14 +247,14 @@ def forgot_password():
         return error_response(
             code="INVALID_REQUEST",
             message="Request body must contain a JSON object.",
-            status_code=400
+            status_code=400,
         )
 
     email = data.get("email")
 
     state.password_reset_service.request_reset(
         email=email,
-        reset_url=state.config.reset_url
+        reset_url=state.config.reset_url,
     )
 
     return success_response(
@@ -227,7 +271,7 @@ def forgot_password():
     action="reset-password",
     identities=("ip",),
     limit_config="reset_password_limit",
-    window_config="reset_password_window"
+    window_config="reset_password_window",
 )
 def reset_password():
     state = current_app.extensions["marks_auth"]
@@ -238,7 +282,7 @@ def reset_password():
         return error_response(
             code="INVALID_REQUEST",
             message="Request body must contain a JSON object.",
-            status_code=400
+            status_code=400,
         )
 
     token = data.get("token")
@@ -247,19 +291,20 @@ def reset_password():
     try:
         state.password_reset_service.reset_password(
             token,
-            new_password
+            new_password,
         )
 
     except AuthError as error:
         return error_response(
             code=error.code,
             message=error.message,
-            status_code=error.status_code
+            status_code=error.status_code,
         )
 
     return success_response(
         message="Password reset successfully."
     )
+
 
 @auth_bp.get("/config")
 def auth_config():
@@ -267,6 +312,8 @@ def auth_config():
 
     return success_response(
         data={
-            "captcha_site_key": state.config.captcha_site_key
+            "captcha_site_key": (
+                state.config.captcha_site_key
+            ),
         }
     )

@@ -30,3 +30,11 @@ class UserStore(ABC):
     @abstractmethod
     def update_password(self, user, password_hash):
         pass
+
+    @abstractmethod
+    def update_password_and_rotate_auth_id(
+        self,
+        user,
+        password_hash
+    ):
+        pass

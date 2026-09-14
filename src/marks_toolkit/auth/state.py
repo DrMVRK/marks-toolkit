@@ -15,6 +15,7 @@ class AuthState:
             captcha_provider,
             throttle_service,
             security_store,
+            audit_logger,
     ):
         
         self.config = config
@@ -31,3 +32,4 @@ class AuthState:
         self.captcha_provider = captcha_provider
         self.throttle_service = throttle_service
         self.security_store = security_store
+        self.audit_logger = audit_logger

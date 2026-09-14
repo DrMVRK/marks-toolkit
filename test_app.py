@@ -7,6 +7,8 @@ from marks_toolkit.auth.user_contract import AuthUser
 from marks_toolkit.auth.user_store import UserStore
 from marks_toolkit.auth.captcha import TurnstileCaptchaProvider
 
+import logging
+
 
 class TestUser(AuthUser):
     def __init__(
@@ -80,6 +82,21 @@ class TestUserStore(UserStore):
 
     def update_password(self, user, password_hash):
         user.password_hash = password_hash
+
+    def update_password_and_rotate_auth_id(
+        self,
+        user,
+        password_hash
+    ):
+        user.password_hash = password_hash
+        user.auth_id = secrets.token_urlsafe(32)
+
+        return user.auth_id
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+)
 
 
 app = Flask(__name__)

@@ -73,7 +73,7 @@ class PasswordResetService:
             new_password
         )
 
-        self.user_store.update_password(
+        self.user_store.update_password_and_rotate_auth_id(
             user,
             password_hash
         )

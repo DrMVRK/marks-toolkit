@@ -37,4 +37,18 @@ class LoginService:
         ):
             raise LoginError("Invalid login credentials.")
 
+        if self.password_service.needs_rehash(
+            user.password_hash
+        ):
+            new_password_hash = (
+                self.password_service.hash_password(
+                    password
+                )
+            )
+
+            self.user_store.update_password(
+                user,
+                new_password_hash
+            )
+
         return user
