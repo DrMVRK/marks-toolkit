@@ -1,22 +1,53 @@
-# Python
-.venv/
-__pycache__/
-*.pyc
-
-# Node
-node_modules/
-dist/
-
 # Environment / secrets
 .env
 .env.*
 !.env.example
 
-# Local auth/session test artifacts
-cookies.txt
-*_cookies.txt
-cookie*.txt
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
 
-# OS/editor
+# Build output
+build/
+dist/
+
+# Node
+node_modules/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+
+# Dumps / backups
+*.dump
+*.bak
+*.backup
+
+# Authentication/session test artifacts
+*cookies*.txt
+*cookie*.txt
+session/
+sessions/
+
+# Keys / certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+# IDE / OS
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
