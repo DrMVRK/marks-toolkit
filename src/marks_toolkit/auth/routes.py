@@ -743,7 +743,10 @@ def auth_config():
 @csrf_protected
 @throttle(
     action="mfa-challenge",
-    identities=("ip",),
+    identities=(
+        "ip",
+        "challenge",
+    ),
     limit_config="mfa_challenge_attempt_limit",
     window_config="mfa_challenge_attempt_window",
 )
@@ -870,7 +873,10 @@ def complete_totp_challenge():
 @csrf_protected
 @throttle(
     action="mfa-challenge",
-    identities=("ip",),
+    identities=(
+        "ip",
+        "challenge",
+    ),
     limit_config="mfa_challenge_attempt_limit",
     window_config="mfa_challenge_attempt_window",
 )

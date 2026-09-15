@@ -176,3 +176,111 @@ def test_login_blocked_after_failure_threshold(client):
     assert blocked.status_code == 429
     assert data["ok"] is False
     assert data["error"]["code"] == "RATE_LIMITED"
+
+def test_login_identity_limit_applies_across_ips(
+    client,
+):
+    register_user(client)
+
+    csrf_token = get_csrf(client)
+
+    for index in range(4):
+        response = client.post(
+            "/auth/login",
+            json={
+                "identity":
+                    "mark@example.com",
+                "password":
+                    "WrongPassword123!",
+            },
+            headers={
+                "X-CSRF-Token":
+                    csrf_token,
+                "X-Forwarded-For":
+                    f"203.0.113.{index + 1}",
+            },
+        )
+
+        assert response.status_code in (
+            401,
+            403,
+        )
+
+    response = client.post(
+        "/auth/login",
+        json={
+            "identity":
+                "mark@example.com",
+            "password":
+                "WrongPassword123!",
+        },
+        headers={
+            "X-CSRF-Token":
+                csrf_token,
+            "X-Forwarded-For":
+                "203.0.113.99",
+        },
+    )
+
+    data = response.get_json()
+
+    assert response.status_code == 403
+
+    assert (
+        data["error"]["code"]
+        == "CAPTCHA_REQUIRED"
+    )
+
+def test_login_ip_limit_applies_across_identities(
+    client,
+):
+    csrf_token = get_csrf(client)
+
+    identities = [
+        "user1@example.com",
+        "user2@example.com",
+        "user3@example.com",
+        "user4@example.com",
+    ]
+
+    for identity in identities:
+        response = client.post(
+            "/auth/login",
+            json={
+                "identity": identity,
+                "password":
+                    "WrongPassword123!",
+            },
+            headers={
+                "X-CSRF-Token":
+                    csrf_token
+            },
+        )
+
+        assert response.status_code in (
+            401,
+            403,
+        )
+
+    response = client.post(
+        "/auth/login",
+        json={
+            "identity":
+                "user5@example.com",
+            "password":
+                "WrongPassword123!",
+        },
+        headers={
+            "X-CSRF-Token":
+                csrf_token
+        },
+    )
+
+    data = response.get_json()
+
+    assert response.status_code == 403
+
+    assert (
+        data["error"]["code"]
+        == "CAPTCHA_REQUIRED"
+    )
