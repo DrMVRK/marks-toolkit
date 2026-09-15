@@ -369,3 +369,31 @@ def test_password_change_is_rate_limited(
         data["error"]["code"]
         == "RATE_LIMITED"
     )
+
+def test_password_change_rejects_non_string_password(
+    client,
+):
+    register_user(client)
+    login_user(client)
+
+    csrf = get_csrf(client)
+
+    response = client.post(
+        "/auth/change-password",
+        json={
+            "current_password": [
+                "bad"
+            ],
+            "new_password":
+                "NewTestingPassword123!",
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert response.status_code == 400
+    assert (
+        response.get_json()["error"]["code"]
+        == "INVALID_REQUEST"
+    )

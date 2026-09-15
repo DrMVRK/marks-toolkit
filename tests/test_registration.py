@@ -182,3 +182,27 @@ def test_registration_is_rate_limited(
         data["error"]["code"]
         == "RATE_LIMITED"
     )
+
+def test_registration_rejects_non_string_email(
+    client,
+):
+    csrf = get_csrf(client)
+
+    response = client.post(
+        "/auth/register",
+        json={
+            "email": ["bad"],
+            "username": "Mark",
+            "password":
+                "TestingPassword123!",
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert response.status_code == 400
+    assert (
+        response.get_json()["error"]["code"]
+        == "INVALID_REQUEST"
+    )

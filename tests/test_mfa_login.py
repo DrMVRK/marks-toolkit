@@ -467,3 +467,51 @@ def test_totp_code_cannot_be_reused_across_challenges(
         body["error"]["code"]
         == "INVALID_TOTP_CODE"
     )
+
+def test_totp_challenge_rejects_non_string_code(
+    client,
+):
+    csrf = get_csrf(client)
+
+    response = client.post(
+        "/auth/mfa/challenge/totp",
+        json={
+            "challenge_id": "test-challenge",
+            "code": [
+                "bad"
+            ],
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert response.status_code == 400
+    assert (
+        response.get_json()["error"]["code"]
+        == "INVALID_REQUEST"
+    )
+
+def test_recovery_challenge_rejects_non_string_code(
+    client,
+):
+    csrf = get_csrf(client)
+
+    response = client.post(
+        "/auth/mfa/challenge/recovery-code",
+        json={
+            "challenge_id": "test-challenge",
+            "recovery_code": {
+                "bad": "type"
+            },
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert response.status_code == 400
+    assert (
+        response.get_json()["error"]["code"]
+        == "INVALID_REQUEST"
+    )

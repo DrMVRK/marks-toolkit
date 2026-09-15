@@ -1,102 +1,132 @@
-# MARKS Toolkit
+MARKS Toolkit
 
-A reusable Python/Flask authentication and application-security toolkit with a companion React authentication frontend.
+A reusable Python/Flask authentication and application-security toolkit with companion React authentication components.
 
-The goal of MARKS Toolkit is to provide a set of reusable, security-focused components that can be dropped into future applications without rebuilding authentication, session management, password recovery, MFA, CAPTCHA, throttling, and related infrastructure from scratch.
+MARKS Toolkit provides reusable, security-focused authentication building blocks so future applications do not need to rebuild registration, login, password recovery, MFA, CAPTCHA, throttling, session security, and related infrastructure from scratch.
 
-The toolkit is designed around:
+Design Goals
 
-* Reusable services instead of application-specific logic
-* Replaceable storage adapters
-* Secure defaults
-* Explicit configuration
-* Separation of backend, persistence, and frontend concerns
-* Minimal integration work for host applications
-* Testable authentication flows
-* Production-oriented architecture without tying the toolkit to one database or frontend design
+MARKS Toolkit favors:
 
----
+reusable services instead of application-specific authentication logic
 
-# Current Status
+replaceable persistence and provider adapters
 
-The toolkit currently includes a functional authentication system with:
+secure defaults
 
-* User registration
-* Email and username identity handling
-* Case-insensitive identity lookup
-* Argon2 password hashing
-* Transparent password rehashing
-* Login and logout
-* Remember-me sessions
-* Session protection
-* Authentication ID rotation
-* Password changing
-* Password reset
-* CSRF protection
-* Adaptive CAPTCHA
-* Login risk tracking
-* Request throttling
-* Security event auditing
-* Redis-backed security-state support
-* SQLAlchemy persistence adapters
-* TOTP authenticator MFA
-* QR-code authenticator enrollment
-* Manual authenticator setup keys
-* MFA login challenges
-* Single-use recovery codes
-* Password reauthentication for sensitive MFA actions
-* Reusable React authentication components
-* Reusable MFA settings UI
+explicit configuration
 
-The automated backend test suite currently contains more than 70 passing authentication and security tests.
+separation of backend, persistence, and frontend concerns
 
-Passkey/WebAuthn support is the next major authentication feature planned.
+testable authentication flows
 
----
+minimal host-application integration
 
-# Project Structure
+production-oriented architecture without requiring one database or frontend stack
 
-```text
+policy separated from mechanism
+
+Applications choose which controls they require; AuthKit supplies the secure mechanisms underneath them.
+
+Current Status
+
+Current capabilities include:
+
+user registration
+
+email and username identity handling
+
+case-insensitive identity lookup
+
+Argon2 password hashing
+
+transparent password rehashing
+
+dummy Argon2 verification for unknown/inactive users
+
+login and logout
+
+remember-me authentication
+
+Flask-Login session protection
+
+authentication-ID rotation
+
+password changing
+
+password reset
+
+CSRF protection
+
+strict JSON request validation
+
+adaptive CAPTCHA
+
+Cloudflare Turnstile support
+
+CAPTCHA hostname and action validation
+
+login risk tracking
+
+request throttling
+
+security event auditing
+
+Redis-backed shared security state
+
+SQLAlchemy persistence adapters
+
+TOTP authenticator MFA
+
+QR-code authenticator enrollment
+
+manual authenticator setup keys
+
+MFA login challenges
+
+Redis-backed distributed MFA challenge storage
+
+atomic MFA challenge consumption
+
+TOTP replay prevention
+
+atomic single-use recovery-code consumption
+
+password reauthentication for sensitive MFA operations
+
+authentication-state revocation after MFA enable/disable
+
+Cache-Control: no-store for secret-bearing MFA responses
+
+reusable React authentication components
+
+reusable MFA settings UI
+
+The automated backend suite currently contains 125 passing authentication and security tests.
+
+Passkey/WebAuthn support is planned as a future capability.
+
+Project Structure
+
 marks-toolkit/
 ├── pyproject.toml
 ├── README.md
 ├── test_app.py
-├── test_risk.py
-│
 ├── frontend/
 │   └── auth/
-│       ├── AuthClient.js
-│       ├── AuthProvider.jsx
-│       ├── AuthModal.jsx
-│       ├── LoginView.jsx
-│       ├── RegisterView.jsx
-│       ├── ForgotPasswordView.jsx
-│       ├── ResetPasswordView.jsx
-│       ├── CaptchaChallenge.jsx
-│       ├── MFAChallengeView.jsx
-│       ├── MFASettings.jsx
-│       ├── ReauthDialog.jsx
-│       └── auth.css
-│
 ├── frontend-test/
 │   └── src/
-│       ├── App.jsx
-│       └── auth/
-│
 ├── src/
 │   └── marks_toolkit/
 │       └── auth/
-│           ├── __init__.py
 │           ├── extensions.py
 │           ├── config.py
 │           ├── state.py
 │           ├── routes.py
-│           │
-│           ├── user_contract.py
+│           ├── responses.py
+│           ├── request_validation.py
 │           ├── user_store.py
-│           ├── sqlalchemy_models.py
 │           ├── sqlalchemy_store.py
-│           │
 │           ├── passwords.py
 │           ├── identity.py
 │           ├── registration.py
@@ -104,18 +134,14 @@ marks-toolkit/
 │           ├── password_change.py
 │           ├── password_reset.py
 │           ├── reset_tokens.py
-│           │
 │           ├── csrf.py
 │           ├── decorators.py
 │           ├── throttle.py
 │           ├── risk.py
 │           ├── security_store.py
-│           │
 │           ├── captcha.py
 │           ├── mailer.py
 │           ├── audit.py
-│           │
-│           ├── mfa.py
 │           ├── mfa_store.py
 │           ├── memory_mfa_store.py
 │           ├── sqlalchemy_mfa_store.py
@@ -123,143 +149,98 @@ marks-toolkit/
 │           ├── recovery_codes.py
 │           ├── recovery_code_manager.py
 │           ├── totp.py
-│           └── mfa_challenge.py
-│
+│           ├── mfa_challenge.py
+│           └── mfa_challenge_store.py
 └── tests/
-    ├── conftest.py
-    ├── test_registration.py
-    ├── test_login.py
-    ├── test_login_risk.py
-    ├── test_password_reset.py
-    ├── test_password_change.py
-    ├── test_password_rehash.py
-    ├── test_session.py
-    ├── test_throttling.py
-    ├── test_audit.py
-    ├── test_totp.py
-    ├── test_totp_disable.py
-    ├── test_recovery_codes.py
-    ├── test_mfa_login.py
-    └── test_mfa_throttling.py
-```
 
----
+Installation
 
-# Backend Architecture
-
-MARKS Toolkit uses a service-oriented authentication architecture.
-
-The Flask application does not directly contain most authentication logic. Instead, the `AuthKit` extension assembles services and adapters based on the host application's configuration.
-
-Conceptually:
-
-```text
-Flask Application
-        │
-        ▼
-     AuthKit
-        │
-        ├── Configuration
-        ├── User Store
-        ├── Password Service
-        ├── Identity Service
-        ├── Registration Service
-        ├── Login Service
-        ├── Password Reset Service
-        ├── Password Change Service
-        ├── CSRF Service
-        ├── Risk Service
-        ├── Throttle Service
-        ├── Audit Logger
-        ├── CAPTCHA Provider
-        │
-        └── MFA Services
-              ├── MFA Store
-              ├── TOTP Service
-              ├── Recovery Codes
-              ├── Secret Encryption
-              └── MFA Challenges
-```
-
-Application-specific dependencies are stored in:
-
-```python
-app.extensions["marks_auth"]
-```
-
-This prevents shared extension objects from accidentally holding state belonging to a specific Flask application.
-
----
-
-# Installation
-
-Create and activate a virtual environment.
+Create a virtual environment and install the project in editable development mode.
 
 Windows PowerShell:
 
-```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
-```
-
-Install the project in editable development mode:
-
-```powershell
 pip install -e ".[dev]"
-```
 
-The project currently depends on libraries including:
+macOS/Linux:
 
-```text
-Flask
-Flask-Login
-argon2-cffi
-httpx
-redis
-SQLAlchemy
-email-validator
-cryptography
-pyotp
-pytest
-```
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
 
----
+Core dependencies include Flask, Flask-Login, Argon2, HTTPX, Redis, SQLAlchemy, email-validator, cryptography, PyOTP, and pytest.
 
-# Basic Flask Integration
+Basic Flask Integration
 
-A host application creates its normal Flask app and initializes `AuthKit`.
-
-Conceptually:
-
-```python
 from flask import Flask
 from marks_toolkit.auth import AuthKit
 
 app = Flask(__name__)
 
-app.config["SECRET_KEY"] = "replace-me"
+app.config["SECRET_KEY"] = "replace-with-a-secret"
+app.config["MARKS_AUTH_RESET_URL"] = (
+    "https://example.com/reset-password"
+)
 
 auth = AuthKit()
 
 auth.init_app(
     app,
     user_store=user_store,
+    mailer=mailer,
     captcha_provider=captcha_provider,
     mfa_store=mfa_store,
 )
-```
 
-Storage and external-service dependencies are deliberately supplied by the host application rather than hard-coded into the toolkit.
+Storage and external-service dependencies are supplied by the host application rather than hard-coded into the toolkit.
 
----
+Required Security Configuration
 
-# User Store
+Flask Secret Key
 
-The authentication system interacts with application users through the `UserStore` contract.
+A Flask SECRET_KEY is required.
 
-Required capabilities include operations such as:
+Use a high-entropy value from environment or secret-management infrastructure in production.
 
-```text
+Password Reset URL
+
+A reset URL is required:
+
+app.config["MARKS_AUTH_RESET_URL"] = (
+    "https://example.com/reset-password"
+)
+
+Reset URLs must be absolute, contain a hostname, and must not contain embedded credentials.
+
+HTTPS is required by default.
+
+Plain HTTP is available only through an explicit development/testing opt-in:
+
+app.config[
+    "MARKS_AUTH_ALLOW_INSECURE_RESET_URL"
+] = True
+
+Do not enable this in production.
+
+Mailer
+
+An explicit mailer is required by default.
+
+The console mailer can be enabled only through an explicit development/testing opt-in:
+
+app.config[
+    "MARKS_AUTH_ALLOW_CONSOLE_MAILER"
+] = True
+
+Production applications should provide a real mailer implementation.
+
+User Store and Authentication IDs
+
+Authentication is abstracted through the UserStore contract.
+
+Important operations include:
+
 find_by_identity
 find_by_auth_id
 email_exists
@@ -268,107 +249,142 @@ create_user
 rotate_auth_id
 update_password
 update_password_and_rotate_auth_id
-```
 
-This allows the authentication system to remain independent from a particular ORM or database schema.
+MARKS Toolkit distinguishes between a permanent database user ID and a rotating authentication ID.
 
-A SQLAlchemy implementation is included.
+Authentication-ID rotation invalidates old Flask-Login sessions and remember cookies without changing the permanent user identity.
 
----
+Current operations that rotate authentication state include:
 
-# Authentication IDs
+password change
 
-MARKS Toolkit distinguishes between:
+password reset
 
-```text
-Database User ID
-```
+TOTP enable
 
-and:
+TOTP disable
 
-```text
-Authentication ID
-```
+Password changes and resets require fresh login afterward.
 
-The database user ID is stable.
+MFA enable/disable rotates authentication state while preserving the current verified browser session.
 
-The authentication ID can be rotated after sensitive account operations.
+Password Security
 
-This allows existing authentication sessions to become invalid without changing the user's permanent database identity.
+Passwords are protected with Argon2.
 
-Operations such as password resets and password changes can rotate the authentication ID.
+The password service supports validation, hashing, verification, hash-upgrade detection, and transparent rehashing.
 
----
-
-# Password Security
-
-Passwords are hashed using Argon2.
-
-The password service supports:
-
-* Password validation
-* Password hashing
-* Password verification
-* Hash-upgrade detection
-* Transparent rehashing after successful login
-
-If password hashing parameters change later, users can automatically receive a stronger hash the next time they successfully authenticate.
+Unknown and inactive-user login attempts execute a dummy Argon2 verification to reduce timing differences that could reveal account existence.
 
 Plaintext passwords are never persisted by the toolkit.
 
----
+Request Validation
 
-# Registration
+Authentication routes validate request bodies before business logic runs.
 
-Registration includes:
+Shared validation helpers enforce:
 
-* Email validation
-* Username validation
-* Password-policy enforcement
-* Duplicate email detection
-* Duplicate username detection
-* Normalized identity values
-* Case-insensitive identity comparison
+JSON object bodies
 
-Email validation uses `email-validator`.
+required strings
 
-Network deliverability checks are disabled by default so account creation does not depend on DNS/network validation.
+optional strings
 
----
+strict boolean values
 
-# Login
+Malformed input is rejected before reaching password, identity, CAPTCHA, or MFA services.
 
-Users can authenticate using their configured identity, such as:
+Login Risk and Throttling
 
-```text
-email
-username
-```
+RiskService tracks failures across three independent buckets:
 
-Login supports:
+identity + IP
 
-* Password verification
-* Remember-me sessions
-* Risk evaluation
-* CAPTCHA escalation
-* Transparent password rehashing
-* MFA challenge initiation
-* Security auditing
+identity-wide
 
-When MFA is not enabled, successful password verification creates the authenticated session immediately.
+IP-wide
 
-When MFA is enabled, successful password verification creates an MFA challenge instead.
+This makes simple IP or identity rotation less effective at bypassing risk controls.
 
----
+ThrottleService protects sensitive operations including registration, password actions, and MFA endpoints.
 
-# MFA Login Flow
+Malformed throttle identities are normalized instead of allowing malformed request bodies to create uncontrolled key variation.
 
-For an MFA-enabled account:
+For distributed deployments, shared state can be stored in Redis.
 
-```text
-Username / Email
-        +
-     Password
+CAPTCHA
+
+Cloudflare Turnstile support includes:
+
+server-side Siteverify validation
+
+failure-closed HTTP and JSON handling
+
+request timeouts
+
+token type/length validation
+
+optional allowed-hostname validation
+
+optional expected-action validation
+
+Production applications should configure hostname restrictions and expected actions for the real deployment.
+
+Adaptive login risk can require CAPTCHA only after suspicious or repeated authentication failures instead of forcing every user through a challenge.
+
+Sessions and Cookies
+
+MARKS Toolkit uses Flask-Login.
+
+Protections include:
+
+remember-me authentication
+
+HTTP-only session and remember cookies
+
+secure cookies
+
+SameSite handling
+
+session protection
+
+authentication-ID based revocation
+
+JSON unauthorized responses
+
+Secure cookies are enabled by default.
+
+For localhost development over plain HTTP only:
+
+app.config[
+    "MARKS_AUTH_COOKIE_SECURE"
+] = False
+
+AuthKit will not weaken stronger cookie settings already configured by the host application.
+
+Password Reset
+
+The password-reset flow uses signed, time-limited reset tokens.
+
+A successful reset:
+
+validates the reset token
+
+updates the password
+
+rotates the authentication ID exactly once
+
+invalidates old sessions and remember cookies
+
+Reset URLs are assembled safely without unsafe query-string concatenation.
+
+Because the authentication ID rotates on successful reset, the old reset token cannot be successfully reused afterward.
+
+MFA Login
+
+For an MFA-enabled user:
+
+Identity + Password
         │
         ▼
  Password Verified
@@ -376,8 +392,7 @@ Username / Email
         ▼
  MFA Challenge Created
         │
-        ├── TOTP Authenticator
-        │
+        ├── TOTP
         └── Recovery Code
         │
         ▼
@@ -385,360 +400,138 @@ Username / Email
         │
         ▼
  Authenticated Session
-```
 
-Entering the correct password alone does not authenticate an MFA-enabled account.
+Password verification alone does not authenticate an MFA-enabled account.
 
-The final Flask-Login session is created only after the second factor succeeds.
+Pending MFA challenges are stored server-side. The Flask session stores only the challenge ID.
 
----
+Challenge consumption is atomic, so a completed MFA challenge cannot be reused.
 
-# TOTP Authenticator MFA
+Available challenge stores:
 
-MARKS Toolkit currently supports standards-based TOTP authenticator applications.
+MemoryMFAChallengeStore
+RedisMFAChallengeStore
 
-Examples include:
+The memory store is suitable for tests and single-process development.
 
-* Google Authenticator
-* Microsoft Authenticator
-* 1Password
-* Authy-compatible TOTP clients
-* Other applications supporting `otpauth://` TOTP enrollment
+When the security-store backend is Redis, AuthKit also uses Redis-backed MFA challenge storage so challenge state is shared across workers.
 
-Enrollment generates:
+TOTP MFA
 
-* A random TOTP secret
-* An `otpauth://` provisioning URI
-* A QR code in the React frontend
-* A manual Base32 setup key
+TOTP enrollment:
 
-The user must successfully verify a TOTP code before enrollment becomes active.
+requires current-password reauthentication
 
----
+creates a secret and provisioning URI
 
-# TOTP Secret Protection
+displays QR/manual enrollment data
 
-TOTP secrets cannot be stored using one-way password hashing because the original secret must be available when verifying future codes.
+requires successful code verification
 
-For this reason, TOTP secrets are encrypted using Fernet.
+activates TOTP only after verification
 
-A production application must provide an encryption key externally:
+TOTP secrets are encrypted with Fernet and require a stable external key:
 
-```text
 MARKS_AUTH_MFA_ENCRYPTION_KEY
-```
 
-The encryption key must not be stored alongside encrypted secrets in the database.
+Successfully accepted TOTP time steps are claimed server-side so the same TOTP code cannot be replayed during its validity window.
 
----
-
-# Recovery Codes
-
-Users with MFA enabled can generate emergency recovery codes.
+Recovery Codes
 
 Recovery codes are:
 
-* Randomly generated
-* Displayed only when generated
-* Stored only as keyed hashes
-* Single-use
-* Invalidated when a new recovery-code set is generated
+randomly generated
 
-The backend uses HMAC-SHA256 with a separate application secret.
+displayed only when generated
+
+stored as keyed HMAC hashes
+
+consumed atomically
+
+single-use
+
+invalidated when a new set is generated
+
+invalidated when TOTP is disabled
 
 Configuration:
 
-```text
 MARKS_AUTH_RECOVERY_CODE_KEY
-```
 
-Recovery-code hashing and TOTP-secret encryption intentionally use different keys.
+Recovery-code hashing and TOTP-secret encryption intentionally use separate keys.
 
----
+Sensitive MFA Operations
 
-# MFA Recovery-Code Login
+Current-password reauthentication is required for:
 
-A recovery code can be used instead of a TOTP code during an MFA login challenge.
+beginning TOTP enrollment
 
-Once successfully used:
+generating recovery codes
 
-```text
-Recovery Code
-     │
-     ▼
-Verified
-     │
-     ▼
-Marked Used
-     │
-     ▼
-Cannot Be Used Again
-```
+disabling TOTP
 
-This allows account recovery if the user loses access to their authenticator device.
+Enabling or disabling TOTP rotates the authentication ID so other sessions and remember cookies become invalid.
 
----
+The current verified browser is refreshed into a new non-remembered authenticated session.
 
-# MFA Reauthentication
+Secret-Bearing Responses
 
-Sensitive MFA management operations require the user to confirm their current password.
+Responses that expose sensitive MFA material use:
 
-The reusable React frontend includes `ReauthDialog.jsx` for this purpose.
+Cache-Control: no-store
 
-It is currently used for actions including:
+This currently includes:
 
-* Generating new recovery codes
-* Disabling authenticator MFA
+TOTP enrollment secrets
 
-The component is intended to be reusable for other sensitive account operations in the future.
+newly generated recovery codes
 
----
+The React frontend also clears sensitive state after relevant flows complete or close.
 
-# MFA Configuration
+MFA Storage
 
-Example configuration:
+The toolkit defines an MFAStore abstraction.
 
-```python
-app.config.update(
-    MARKS_AUTH_MFA_ENABLED=True,
+Current implementations:
 
-    MARKS_AUTH_MFA_ENCRYPTION_KEY=...,
-
-    MARKS_AUTH_RECOVERY_CODE_KEY=...,
-
-    MARKS_AUTH_TOTP_ISSUER="My Application",
-
-    MARKS_AUTH_MFA_CHALLENGE_TTL=300,
-
-    MARKS_AUTH_MFA_CHALLENGE_ATTEMPT_LIMIT=5,
-
-    MARKS_AUTH_MFA_CHALLENGE_ATTEMPT_WINDOW=300,
-)
-```
-
-When MFA is enabled, the application must provide the necessary MFA storage and cryptographic keys.
-
----
-
-# MFA Storage
-
-The toolkit defines an `MFAStore` abstraction.
-
-Current implementations include:
-
-```text
 MemoryMFAStore
 SQLAlchemyMFAStore
-```
 
-`MemoryMFAStore` is intended for:
+MemoryMFAStore is intended for tests and development.
 
-* Automated tests
-* Development
-* Demonstration applications
+Production applications should use persistent MFA storage.
 
-It is not appropriate for production deployment because all MFA state disappears when the application restarts.
+SQLAlchemy persistence currently covers TOTP and recovery-code state, with passkey persistence groundwork already present.
 
----
+Redis
 
-# SQLAlchemy MFA Models
-
-SQLAlchemy models currently include structures for:
-
-```text
-TOTP enrollment
-Recovery codes
-Passkeys
-```
-
-TOTP and recovery-code flows are implemented.
-
-Passkey persistence structures exist as groundwork for upcoming WebAuthn support, but the full passkey registration/authentication flow is not yet implemented.
-
-MFA records reference the user's permanent database ID rather than the rotating authentication ID.
-
----
-
-# Password Change
-
-Authenticated users can change their password by supplying:
-
-```text
-current password
-new password
-```
-
-After a successful password change:
-
-1. The new password is hashed.
-2. The user's authentication ID is rotated.
-3. Existing authentication state is invalidated.
-4. The current user is logged out.
-5. Fresh authentication is required.
-
----
-
-# Password Reset
-
-The password-reset system supports:
-
-```text
-Forgot Password
-      │
-      ▼
-Request Reset
-      │
-      ▼
-Reset Token
-      │
-      ▼
-Reset URL / Mailer
-      │
-      ▼
-New Password
-      │
-      ▼
-Authentication ID Rotated
-```
-
-The toolkit supports a replaceable mailer abstraction.
-
-A console mailer is available for development.
-
-Production applications can provide their own email implementation.
-
----
-
-# CSRF Protection
-
-State-changing authentication requests require CSRF protection.
-
-The React `AuthClient` automatically manages the authentication API's CSRF token.
-
-The frontend initializes authentication state using endpoints such as:
-
-```text
-/auth/config
-/auth/csrf
-/auth/me
-```
-
----
-
-# CAPTCHA
-
-The toolkit supports adaptive CAPTCHA rather than forcing every user through a challenge.
-
-The login-risk system can require CAPTCHA after suspicious or repeated authentication attempts.
-
-Cloudflare Turnstile support is available through the CAPTCHA provider architecture.
-
-The development test application can use Cloudflare's official Turnstile testing credentials.
-
----
-
-# Risk Tracking
-
-`RiskService` tracks authentication failures through the configured security store.
-
-Risk state can be used to determine when additional security controls should be required.
-
-For example:
-
-```text
-normal login
-    │
-failed attempts
-    │
-risk increases
-    │
-CAPTCHA required
-    │
-continued failures
-    │
-authentication blocked / throttled
-```
-
----
-
-# Request Throttling
-
-`ThrottleService` provides reusable rate limiting for security-sensitive endpoints.
-
-Current use cases include:
-
-* Login
-* Password reset
-* Forgot-password requests
-* MFA challenges
-* Other sensitive authentication operations
-
-Memory-backed state is available during development.
-
-Redis-backed state is available for persistent/distributed deployments.
-
----
-
-# Redis Security Store
-
-`RedisSecurityStore` supports shared authentication security state between application processes.
-
-This is important when running multiple workers because in-memory counters are not shared across processes.
-
-Redis support currently includes expiring attempt counters suitable for:
-
-* Risk tracking
-* Authentication throttling
-* MFA attempt throttling
-
-The adapter exists, although production Redis integration testing remains part of future deployment hardening.
-
----
-
-# Sessions
-
-The toolkit uses Flask-Login for authenticated session handling.
-
-Configuration includes support for:
-
-* Remember-me cookies
-* HTTP-only cookies
-* Secure cookies
-* SameSite policies
-* Strong session protection
-* JSON unauthorized responses
-
-Production deployments should enable secure cookies when HTTPS is used.
+Redis-backed security state supports distributed deployments.
 
 Example:
 
-```python
 app.config.update(
-    MARKS_AUTH_COOKIE_SECURE=True
+    MARKS_AUTH_SECURITY_STORE="redis",
+    MARKS_AUTH_REDIS_URL="redis://localhost:6379/0",
 )
-```
 
-Development over plain HTTP can disable secure-cookie enforcement.
+Redis is used for shared authentication security counters and, with the current configuration model, distributed MFA challenge state.
 
----
+Production Redis should be protected with appropriate network isolation, credentials, monitoring, and TLS where applicable.
 
-# Reverse Proxy Support
+Reverse Proxy Support
 
-Applications deployed behind Nginx, Cloudflare, or another reverse proxy can enable configurable Werkzeug `ProxyFix` support.
+Configurable Werkzeug ProxyFix support is available for trusted reverse-proxy deployments.
 
-Only trusted proxy hops should be configured.
+Configure only the actual number of trusted proxy hops.
 
-Incorrect proxy configuration can allow clients to spoof information such as their apparent IP address.
+Incorrect forwarded-header trust can allow clients to spoof apparent IP addresses or request scheme information.
 
----
+Audit Logging
 
-# Audit Logging
-
-Authentication activity can be recorded through the audit logging system.
+Security-relevant authentication events can be logged.
 
 Examples include:
 
-```text
 login_success
 login_failure
 captcha_required
@@ -749,572 +542,396 @@ totp_enrollment_started
 totp_enabled
 totp_disabled
 recovery_codes_generated
-MFA verification failures
-```
 
-Sensitive values are filtered from audit metadata.
+Sensitive data such as passwords, reset tokens, CAPTCHA tokens, TOTP secrets, and recovery codes should never be logged.
 
-Fields such as the following should never be recorded:
+The host application is responsible for log destination, retention, access control, and centralized collection.
 
-```text
-password
-password_hash
-token
-captcha_token
-TOTP secret
-```
+React Frontend
 
-The host application remains responsible for configuring the Python logging destination and retention policy.
+Reusable React components live under:
 
----
-
-# Frontend Architecture
-
-The reusable React frontend is located under:
-
-```text
 frontend/auth/
-```
 
-Its purpose is to provide working authentication behavior while allowing future applications to replace or extend the appearance.
+They provide:
 
-The host application should primarily customize:
+authentication API access
 
-* Theme
-* Colors
-* Typography
-* Layout
-* Branding
+auth state management
 
-rather than rewriting authentication logic.
+login/register/forgot-password/reset-password views
 
----
+MFA challenge handling
 
-# AuthClient
+MFA enrollment/settings UI
 
-`AuthClient.js` provides the frontend API layer.
+reusable password reauthentication dialog
 
-It handles operations including:
+The frontend test harness mirrors these components under:
 
-```text
-configuration loading
-CSRF loading
-session lookup
-login
-logout
-registration
-password reset
-MFA challenge completion
-```
+frontend-test/src/auth/
 
-Requests include browser credentials so Flask sessions remain available.
+When reusable components change, keep the test-harness copies synchronized.
 
----
+QR enrollment uses qrcode.react and is generated locally in the browser. The TOTP secret is not sent to a third-party QR service.
 
-# AuthProvider
+Development Test Application
 
-`AuthProvider.jsx` exposes reusable authentication state to React components.
+test_app.py is intentionally configured as a local development harness.
 
-Typical values include:
+It may use:
 
-```text
-client
-config
-ready
-user
-authenticated
-handleLogin
-logout
-```
+in-memory users
 
-This prevents host applications from having to independently implement authentication-state management.
+in-memory MFA persistence
 
----
+development cryptographic keys
 
-# AuthModal
+Turnstile test credentials
 
-Authentication is modal-first.
+console mailer
 
-`AuthModal.jsx` controls views such as:
+insecure localhost reset URL opt-in
 
-```text
-Login
-Register
-Forgot Password
-Reset Password
-MFA Challenge
-```
+non-secure localhost cookies
 
-This allows a host application to open authentication from anywhere rather than requiring dedicated login pages.
+These development exceptions are explicit so they cannot silently become production defaults.
 
----
+Example local account:
 
-# MFA Challenge View
+Email:    mark@example.com
+Username: Mark
+Password: TestingPassword123!
 
-`MFAChallengeView.jsx` handles second-factor login.
-
-Current supported methods include:
-
-```text
-TOTP authenticator code
-Recovery code
-```
-
-The user remains unauthenticated until one of these methods succeeds.
-
----
-
-# MFA Settings
-
-`MFASettings.jsx` provides reusable authenticated-account MFA management.
-
-Current functionality includes:
-
-* Display MFA status
-* Start TOTP enrollment
-* Display QR enrollment code
-* Display manual setup key
-* Verify TOTP enrollment
-* Generate recovery codes
-* Display newly generated recovery codes
-* Disable TOTP
-* Refresh MFA status
-* Password reauthentication for sensitive actions
-
----
-
-# QR Enrollment
-
-The frontend uses:
-
-```text
-qrcode.react
-```
-
-to generate a QR code from the backend-generated TOTP provisioning URI.
-
-The secret is never sent to a third-party QR-generation service.
-
-QR generation occurs locally in the browser.
-
-A manual setup key remains available as a fallback.
-
----
-
-# Reauthentication Dialog
-
-`ReauthDialog.jsx` provides a reusable password-confirmation UI for sensitive operations.
-
-This replaces browser-native `window.prompt()` dialogs and allows the authentication experience to remain:
-
-* Styled
-* Accessible
-* Reusable
-* Application controlled
-
-Future uses may include:
-
-* Password changes
-* Passkey deletion
-* Email changes
-* Account deletion
-* Other high-risk account changes
-
----
-
-# Frontend Dependencies
-
-The reusable MFA enrollment UI currently uses:
-
-```bash
-npm install qrcode.react
-```
-
-The host frontend is responsible for providing React.
-
----
-
-# Development Test Application
-
-`test_app.py` provides a development environment for manually exercising the authentication toolkit.
-
-It currently uses:
-
-```text
-Memory user store
-Memory MFA store
-Development encryption keys
-Development recovery-code key
-Cloudflare Turnstile test credentials
-Console mailer
-```
-
-Example development account:
-
-```text
-Email:
-mark@example.com
-
-Username:
-Mark
-
-Password:
-TestingPassword123!
-```
-
-These credentials exist only for local development.
-
----
-
-# Important Development Behavior
-
-The development application uses in-memory persistence.
-
-Restarting Flask resets:
-
-* Users
-* MFA enrollments
-* Recovery codes
-* Some security state
-
-The development application may also generate a new temporary MFA encryption key at startup.
-
-Therefore MFA enrollment should be considered temporary when using `test_app.py`.
+Restarting the development app may reset users, MFA state, recovery codes, in-memory challenge state, and security counters.
 
 Production applications must use persistent storage and stable externally managed keys.
 
----
+Running the Development Harness
 
-# Running the Backend Test App
+Backend:
 
-From the project root:
-
-```powershell
 python test_app.py
-```
 
-The development Flask server normally runs at:
+Frontend:
 
-```text
-http://127.0.0.1:5000
-```
-
-A basic health endpoint is available at:
-
-```text
-/auth/test
-```
-
----
-
-# Running the Frontend Test Harness
-
-From:
-
-```text
-frontend-test/
-```
-
-install dependencies:
-
-```powershell
+cd frontend-test
 npm install
-```
-
-then run:
-
-```powershell
 npm run dev
-```
 
-Vite normally provides the frontend at a local development URL such as:
+Vite normally serves the frontend around:
 
-```text
 http://localhost:5173
-```
 
-The Vite development proxy forwards `/auth` requests to Flask.
+and proxies /auth requests to Flask.
 
----
+Testing
 
-# Frontend Test Harness Note
+Run the backend suite with:
 
-`frontend-test/src/auth/` currently contains development copies of the reusable components from:
-
-```text
-frontend/auth/
-```
-
-When reusable frontend components are modified, their test-harness copies must also be updated.
-
-This duplication exists for development/testing convenience and may later be replaced with direct package imports.
-
----
-
-# Testing
-
-Run the backend test suite with:
-
-```powershell
 pytest
-```
 
-The suite currently covers areas including:
+The current suite contains 125 passing tests covering areas including:
 
-* Registration
-* Login
-* Identity handling
-* Password security
-* Password rehashing
-* Password reset
-* Password changing
-* Sessions
-* Risk tracking
-* Throttling
-* Audit logging
-* TOTP enrollment
-* TOTP disabling
-* Recovery codes
-* MFA login
-* MFA throttling
+registration
 
-The current suite contains more than 70 passing tests.
+login
 
----
+malformed input handling
 
-# Security Principles
+password hashing and rehashing
 
-MARKS Toolkit follows several core security rules.
+dummy password verification
 
-## Never Trust Client Input
+password reset
 
-All meaningful authorization and validation occurs on the backend.
+password changes
 
-Frontend checks exist for usability, not security.
+session behavior
 
----
+authentication-ID revocation
 
-## Never Store Plaintext Passwords
+secure-cookie defaults
 
-Passwords are hashed using Argon2.
+reset URL validation
 
----
+mailer configuration
 
-## Never Store Plaintext Recovery Codes
+risk tracking
 
-Recovery codes are stored using keyed HMAC hashes.
+throttling
 
----
+audit logging
 
-## Encrypt Recoverable Authentication Secrets
+CAPTCHA behavior
 
-TOTP secrets are encrypted because they must later be recovered for verification.
+Turnstile hostname/action validation
 
----
+TOTP enrollment
 
-## Keep Encryption Keys Outside the Database
+TOTP replay prevention
 
-Possessing both the encrypted database value and the encryption key defeats the purpose of application-level secret encryption.
+TOTP disabling
 
----
+recovery-code generation
 
-## Rotate Authentication State After Credential Changes
+atomic recovery-code consumption
 
-Password-reset and password-change operations rotate the user's authentication ID.
+MFA login
 
----
+MFA challenge replay prevention
 
-## MFA Password Verification Is Not Authentication
+MFA throttling
 
-When MFA is enabled, successful password verification creates only a pending MFA challenge.
+Redis MFA challenge behavior
 
-A login session is created only after the second factor succeeds.
+no-store secret responses
 
----
+For frontend changes also run:
 
-## Sensitive MFA Actions Require Reauthentication
+npm run build
 
-Actions such as disabling MFA or regenerating recovery codes require the user's current password.
+and manually exercise the affected flow in the test harness.
 
-Additional step-up policies may be added later.
+Security Principles
 
----
+MARKS Toolkit follows several core rules:
 
-## Recovery Codes Are Single Use
+backend validation is the security boundary
 
-Once successfully consumed, a recovery code cannot authenticate again.
+plaintext passwords are never stored
 
----
+unknown-user authentication performs dummy Argon2 work
 
-## Rate Limit Authentication Endpoints
+recovery codes are never stored in plaintext
 
-Login, reset, CAPTCHA, and MFA endpoints should always be protected from automated guessing.
+recoverable MFA secrets are encrypted
 
----
+cryptographic keys should live outside the database
 
-## Audit Security Events, Not Secrets
+authentication IDs rotate after supported credential/MFA changes
 
-Authentication events should be visible to operators without leaking credentials or secret material into logs.
+password verification does not complete MFA authentication
 
----
+sensitive MFA actions require reauthentication
 
-# Production Requirements
+accepted TOTP time steps cannot be replayed
 
-Before using MARKS Toolkit in a production application, the host application should provide:
+recovery codes are atomically single-use
 
-* A persistent `UserStore`
-* A persistent `MFAStore`
-* A production database
-* Stable secret keys
-* HTTPS
-* Secure cookies
-* Appropriate reverse-proxy configuration
-* Production CAPTCHA credentials
-* A production mail provider
-* Redis or another persistent security-state store where appropriate
-* Central logging
-* Database migrations
-* Secret-management infrastructure
-* Backup and recovery procedures
+MFA challenges are atomically single-use
 
-The in-memory development adapters are not production persistence mechanisms.
+distributed security state must be shared across workers
 
----
+secret-bearing responses should not be cached
 
-# Environment / Secret Management
+authentication endpoints require abuse controls
 
-Secrets should be supplied through environment variables or an external secret manager.
+audit logs must record events, not secrets
 
-Examples include:
+Production Requirements
 
-```text
-FLASK SECRET KEY
-MARKS_AUTH_MFA_ENCRYPTION_KEY
-MARKS_AUTH_RECOVERY_CODE_KEY
-CAPTCHA SECRET
-DATABASE CREDENTIALS
-REDIS CREDENTIALS
-MAIL CREDENTIALS
-```
+Before using MARKS Toolkit in production, provide:
 
-Do not commit production secrets to Git.
+persistent UserStore
 
----
+persistent MFAStore
 
-# Planned Work
+production database
 
-The next major areas of development include:
+database migrations
 
-## Passkeys / WebAuthn
+stable Flask secret key
 
-Planned functionality includes:
+stable MFA encryption key
 
-* Passkey registration
-* WebAuthn registration challenge
-* WebAuthn authentication challenge
-* Credential public-key storage
-* Signature-counter validation
-* Passkey naming
-* Passkey removal
-* Passkey-based MFA
-* Potential passwordless authentication
+stable recovery-code HMAC key
 
-Initial SQLAlchemy passkey persistence structures already exist.
+HTTPS
 
----
+secure cookies
 
-## MFA Hardening
+correct reverse-proxy configuration
 
-Planned improvements include:
+production CAPTCHA credentials
 
-* TOTP replay prevention
-* More granular MFA attempt throttling
-* Recent-authentication policies
-* Additional protection for MFA configuration changes
-* Explicit challenge cancellation
-* Challenge-state hardening for distributed deployments
-* Recovery-code lifecycle policy when the final MFA factor is removed
+CAPTCHA hostname/action restrictions
 
----
+production mail provider
 
-## Persistent Deployment Integration
+Redis-backed security state for multi-worker deployments
+
+centralized logging
+
+secret-management infrastructure
+
+backup and recovery procedures
+
+The in-memory adapters are development/testing mechanisms, not production persistence.
+
+Production Deployment Checklist
+
+Secrets
+
+Flask SECRET_KEY is high entropy and externally managed
+
+MARKS_AUTH_MFA_ENCRYPTION_KEY is stable and externally managed
+
+MARKS_AUTH_RECOVERY_CODE_KEY is stable and externally managed
+
+production CAPTCHA, database, Redis, and mail credentials are externally managed
+
+production secrets are not committed to Git
+
+HTTPS and Cookies
+
+HTTPS is enforced
+
+secure cookies remain enabled
+
+reset URLs use HTTPS
+
+MARKS_AUTH_ALLOW_INSECURE_RESET_URL is disabled
+
+MARKS_AUTH_ALLOW_CONSOLE_MAILER is disabled
+
+Persistence
+
+production user storage is persistent
+
+production MFA storage is persistent
+
+database migrations are applied
+
+backup and recovery procedures are tested
+
+Distributed Deployment
+
+For multiple workers or instances:
+
+MARKS_AUTH_SECURITY_STORE="redis"
+
+all workers share the configured Redis service
+
+Redis authentication/network controls are configured
+
+all workers share the same required cryptographic configuration
+
+CAPTCHA
+
+production Turnstile keys are used
+
+allowed-hostname validation is configured
+
+expected-action validation is configured where applicable
+
+Proxying
+
+ProxyFix is enabled only behind a trusted proxy
+
+trusted-hop counts match the real deployment
+
+direct untrusted access cannot spoof trusted forwarded headers
+
+Logging
+
+authentication audit logs have a defined destination
+
+retention and access policies are defined
+
+secrets are excluded
+
+operators can detect repeated authentication abuse
+
+Known Limitations
+
+MARKS Toolkit is still under active development.
+
+Current limitations include:
+
+full WebAuthn/passkey flows are not implemented yet
+
+there is no user-facing active-session/device registry yet
+
+Redis adapters have automated tests, but real production Redis infrastructure should still be integration-tested
+
+database migration tooling remains a host-application responsibility
+
+React components are currently distributed as source rather than as a dedicated frontend package
+
+Planned Work
+
+Passkeys / WebAuthn
 
 Planned work includes:
 
-* Production SQLAlchemy integration tests
-* Database migrations
-* Alembic integration
-* Redis integration tests
-* Multi-worker deployment testing
-* Persistent MFA-store tests
+registration challenges
 
----
+authentication challenges
 
-## Session Management
+credential public-key storage
 
-Potential future capabilities include:
+signature-counter validation
 
-* Session registry
-* View active sessions
-* Revoke individual sessions
-* Revoke all other sessions
-* Device/session metadata
-* Security notifications
+passkey naming/removal
 
----
+passkey-based MFA
 
-## Frontend Improvements
+potential passwordless authentication
 
-Planned frontend improvements include:
+Session Management
 
-* Passkey management
-* Recovery-code download/copy controls
-* Better confirmation dialogs
-* Accessibility refinement
-* Host-provided branding hooks
-* Additional styling primitives
-* Packaging reusable frontend components for direct import
+Potential future capabilities:
 
----
+active-session registry
 
-# Design Goal
+device/session metadata
 
-The long-term goal is for a new application to require only a relatively small amount of authentication-specific setup.
+revoke individual sessions
 
-Instead of rebuilding:
+revoke all other sessions
 
-```text
-registration
-login
-password security
-password reset
-sessions
-CSRF
-CAPTCHA
-rate limiting
-MFA
-recovery codes
-security logging
-frontend auth state
-auth modals
-```
+security notifications
 
-every project should be able to compose those capabilities from MARKS Toolkit and focus primarily on the application's actual business logic.
+Deployment Integration
 
----
+Planned hardening includes:
 
-# Development Philosophy
+real Redis integration testing
 
-This project intentionally favors:
+multi-worker deployment testing
 
-```text
+broader SQLAlchemy integration testing
+
+Alembic reference integration
+
+deployment examples
+
+Frontend
+
+Potential improvements include:
+
+passkey management
+
+recovery-code copy/download controls
+
+accessibility refinement
+
+host branding hooks
+
+packaging reusable components for direct import
+
+Development Philosophy
+
+MARKS Toolkit intentionally favors:
+
 configuration over hard-coding
 interfaces over tight coupling
 small services over giant modules
 explicit security controls over implicit behavior
+strong mechanisms across all policy profiles
 persistent IDs over session identifiers
 tests over assumptions
 reusable components over copy-and-paste application code
-```
 
-The toolkit is being developed incrementally, with each authentication capability tested independently before becoming part of the reusable system.
+The toolkit is developed incrementally, with security-sensitive behavior covered by regression tests before being treated as part of the reusable platform.

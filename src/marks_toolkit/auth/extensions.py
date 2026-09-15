@@ -142,14 +142,9 @@ class AuthKit:
             max_length=config.password_max_length,
         )
 
-        mfa_challenge_store = (
-            MemoryMFAChallengeStore()
-        )
-
-        mfa_challenge_service = MFAChallengeService(
-            store=mfa_challenge_store,
-            ttl_seconds=
-                config.mfa_challenge_ttl,
+        from .mfa_challenge_store import (
+            MemoryMFAChallengeStore,
+            RedisMFAChallengeStore,
         )
 
         # -------------------------------------------------
@@ -362,6 +357,31 @@ class AuthKit:
                 "MARKS_AUTH_SECURITY_STORE: "
                 f"{config.security_store_backend}"
             )
+
+        if (
+            config.security_store_backend
+            == "redis"
+        ):
+            mfa_challenge_store = (
+                RedisMFAChallengeStore(
+                    redis_url=config.redis_url
+                )
+            )
+
+        else:
+            mfa_challenge_store = (
+                MemoryMFAChallengeStore()
+            )
+
+
+        mfa_challenge_service = (
+            MFAChallengeService(
+                store=mfa_challenge_store,
+                ttl_seconds=(
+                    config.mfa_challenge_ttl
+                ),
+            )
+        )
 
         risk_service = RiskService(
             security_store=security_store,

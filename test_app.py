@@ -149,12 +149,21 @@ app.config["MARKS_AUTH_RESET_URL"] = (
     "http://127.0.0.1:5173/reset-password"
 )
 
-app.config["MARKS_AUTH_COOKIE_SECURE"] = False
+app.config[
+    "MARKS_AUTH_COOKIE_SECURE"
+] = False
+
+app.config[
+    "MARKS_AUTH_ALLOW_INSECURE_RESET_URL"
+] = True
+
+app.config[
+    "MARKS_AUTH_ALLOW_CONSOLE_MAILER"
+] = True
 
 app.config[
     "MARKS_AUTH_PROXY_FIX_ENABLED"
 ] = False
-
 
 # --------------------------------------------------
 # CAPTCHA configuration
@@ -165,14 +174,15 @@ app.config[
     "MARKS_AUTH_CAPTCHA_SITE_KEY"
 ] = "1x00000000000000000000AA"
 
-captcha_provider = (
-    TurnstileCaptchaProvider(
-        secret_key=(
-            "1x0000000000000000000000000000000AA"
-        )
-    )
+captcha_provider = TurnstileCaptchaProvider(
+    secret_key=(
+        "1x0000000000000000000000000000000AA"
+    ),
+    allowed_hostnames=[
+        "127.0.0.1",
+        "localhost",
+    ],
 )
-
 
 # --------------------------------------------------
 # Authentication risk configuration
@@ -250,6 +260,7 @@ app.config[
 ] = 300
 
 
+
 # --------------------------------------------------
 # Development stores
 # --------------------------------------------------
@@ -272,6 +283,7 @@ auth_kit.init_app(
 )
 
 state = app.extensions["marks_auth"]
+
 
 
 # --------------------------------------------------

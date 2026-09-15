@@ -6,16 +6,40 @@ from flask_login import (
     logout_user,
 )
 
-from .responses import success_response, error_response
+from .responses import (
+    success_response,
+    error_response,
+    no_store_response,
+)
 from .exceptions import AuthError
 from .decorators import (
     csrf_protected,
     throttle,
 )
-
+from .request_validation import (
+    get_json_object,
+    get_required_string,
+    get_optional_string,
+    get_optional_bool,
+)
 
 auth_bp = Blueprint("marks_auth", __name__)
 
+def refresh_security_session(
+    state,
+    user,
+):
+    state.user_store.rotate_auth_id(
+        user
+    )
+
+    logout_user()
+
+    login_user(
+        user,
+        remember=False,
+        fresh=True,
+    )
 
 @auth_bp.get("/test")
 def test_route():
@@ -58,7 +82,12 @@ def me():
 def register():
     state = current_app.extensions["marks_auth"]
 
-    data = request.get_json(silent=True)
+    data, request_error = (
+        get_json_object()
+    )
+
+    if request_error is not None:
+        return request_error
 
     if not isinstance(data, dict):
         return error_response(
@@ -67,9 +96,29 @@ def register():
             status_code=400,
         )
 
-    email = data.get("email")
-    username = data.get("username")
-    password = data.get("password")
+    email, field_error = get_required_string(
+        data,
+        "email",
+    )
+
+    if field_error is not None:
+        return field_error
+
+    username, field_error = get_required_string(
+        data,
+        "username",
+    )
+
+    if field_error is not None:
+        return field_error
+
+    password, field_error = get_required_string(
+        data,
+        "password",
+    )
+
+    if field_error is not None:
+        return field_error
 
     try:
         state.registration_service.register(
@@ -96,7 +145,12 @@ def register():
 def login():
     state = current_app.extensions["marks_auth"]
 
-    data = request.get_json(silent=True)
+    data, request_error = (
+        get_json_object()
+    )
+
+    if request_error is not None:
+        return request_error
 
     if not isinstance(data, dict):
         return error_response(
@@ -105,10 +159,38 @@ def login():
             status_code=400,
         )
 
-    identity = data.get("identity")
-    password = data.get("password")
+    identity, field_error = (
+        get_required_string(
+            data,
+            "identity",
+        )
+    )
+
+    if field_error is not None:
+        return field_error
+
+    password, field_error = (
+        get_required_string(
+            data,
+            "password",
+        )
+    )
+
+    if field_error is not None:
+        return field_error
 
     ip_address = request.remote_addr or "unknown"
+
+    remember, field_error = (
+        get_optional_bool(
+            data,
+            "remember",
+            default=False,
+        )
+    )
+    
+    if field_error is not None:
+        return field_error
 
     decision = state.risk_service.assess(
         action="login",
@@ -178,10 +260,6 @@ def login():
             message=error.message,
             status_code=error.status_code,
         )
-
-    remember = bool(
-        data.get("remember", False)
-    )
 
     state.risk_service.record_success(
         action="login",
@@ -299,7 +377,12 @@ def csrf():
 def forgot_password():
     state = current_app.extensions["marks_auth"]
 
-    data = request.get_json(silent=True)
+    data, request_error = (
+        get_json_object()
+    )
+
+    if request_error is not None:
+        return request_error
 
     if not isinstance(data, dict):
         return error_response(
@@ -308,7 +391,13 @@ def forgot_password():
             status_code=400,
         )
 
-    email = data.get("email")
+    email, field_error = get_required_string(
+        data,
+        "email",
+    )
+
+    if field_error is not None:
+        return field_error
 
     state.password_reset_service.request_reset(
         email=email,
@@ -334,7 +423,12 @@ def forgot_password():
 def reset_password():
     state = current_app.extensions["marks_auth"]
 
-    data = request.get_json(silent=True)
+    data, request_error = (
+        get_json_object()
+    )
+
+    if request_error is not None:
+        return request_error
 
     if not isinstance(data, dict):
         return error_response(
@@ -343,8 +437,21 @@ def reset_password():
             status_code=400,
         )
 
-    token = data.get("token")
-    new_password = data.get("password")
+    token, field_error = get_required_string(
+        data,
+        "token",
+    )
+
+    if field_error is not None:
+        return field_error
+
+    new_password, field_error = get_required_string(
+        data,
+        "password",
+    )
+
+    if field_error is not None:
+        return field_error
 
     try:
         state.password_reset_service.reset_password(
@@ -376,7 +483,12 @@ def reset_password():
 def change_password():
     state = current_app.extensions["marks_auth"]
 
-    data = request.get_json(silent=True)
+    data, request_error = (
+        get_json_object()
+    )
+
+    if request_error is not None:
+        return request_error
 
     if not isinstance(data, dict):
         return error_response(
@@ -385,8 +497,25 @@ def change_password():
             status_code=400,
         )
 
-    current_password = data.get("current_password")
-    new_password = data.get("new_password")
+    current_password, field_error = (
+        get_required_string(
+            data,
+            "current_password",
+        )
+    )
+
+    if field_error is not None:
+        return field_error
+
+    new_password, field_error = (
+        get_required_string(
+            data,
+            "new_password",
+        )
+    )
+
+    if field_error is not None:
+        return field_error
 
     try:
         state.password_change_service.change_password(
@@ -470,9 +599,12 @@ def enroll_totp():
             status_code=404,
         )
 
-    data = request.get_json(
-        silent=True
+    data, request_error = (
+        get_json_object()
     )
+
+    if request_error is not None:
+        return request_error
 
     if not isinstance(data, dict):
         return error_response(
@@ -484,9 +616,15 @@ def enroll_totp():
             status_code=400,
         )
 
-    current_password = data.get(
-        "current_password"
+    current_password, field_error = (
+        get_required_string(
+            data,
+            "current_password",
+        )
     )
+
+    if field_error is not None:
+        return field_error
 
     try:
         enrollment = (
@@ -513,7 +651,7 @@ def enroll_totp():
         ip_address=request.remote_addr or "unknown",
     )
 
-    return success_response(
+    return no_store_response(
         data={
             "secret": enrollment["secret"],
             "provisioning_uri": (
@@ -543,7 +681,12 @@ def verify_totp_enrollment():
             status_code=404,
         )
 
-    data = request.get_json(silent=True)
+    data, request_error = (
+        get_json_object()
+    )
+
+    if request_error is not None:
+        return request_error
 
     if not isinstance(data, dict):
         return error_response(
@@ -552,7 +695,13 @@ def verify_totp_enrollment():
             status_code=400,
         )
 
-    code = data.get("code")
+    code, field_error = get_required_string(
+        data,
+        "code",
+    )
+
+    if field_error is not None:
+        return field_error
 
     try:
         state.totp_service.verify_enrollment(
@@ -566,6 +715,13 @@ def verify_totp_enrollment():
             message=error.message,
             status_code=error.status_code,
         )
+
+    user = current_user._get_current_object()
+
+    refresh_security_session(
+        state,
+        user,
+    )
 
     state.audit_logger.log(
         "totp_enabled",
@@ -598,7 +754,12 @@ def disable_totp():
             status_code=404,
         )
 
-    data = request.get_json(silent=True)
+    data, request_error = (
+        get_json_object()
+    )
+
+    if request_error is not None:
+        return request_error
 
     if not isinstance(data, dict):
         return error_response(
@@ -607,9 +768,15 @@ def disable_totp():
             status_code=400,
         )
 
-    current_password = data.get(
-        "current_password"
+    current_password, field_error = (
+        get_required_string(
+            data,
+            "current_password",
+        )
     )
+
+    if field_error is not None:
+        return field_error
 
     try:
         state.totp_service.disable_totp(
@@ -625,11 +792,21 @@ def disable_totp():
             status_code=error.status_code,
         )
 
+    user = current_user._get_current_object()
+
+    refresh_security_session(
+        state,
+        user,
+    )
+
     state.audit_logger.log(
         "totp_disabled",
-        auth_id=current_user.auth_id,
-        username=current_user.username,
-        ip_address=request.remote_addr or "unknown",
+        auth_id=user.auth_id,
+        username=user.username,
+        ip_address=(
+            request.remote_addr
+            or "unknown"
+        ),
     )
 
     return success_response(
@@ -661,7 +838,12 @@ def generate_recovery_codes():
             status_code=404,
         )
 
-    data = request.get_json(silent=True)
+    data, request_error = (
+        get_json_object()
+    )
+
+    if request_error is not None:
+        return request_error
 
     if not isinstance(data, dict):
         return error_response(
@@ -673,9 +855,15 @@ def generate_recovery_codes():
             status_code=400,
         )
 
-    current_password = data.get(
-        "current_password"
+    current_password, field_error = (
+        get_required_string(
+            data,
+            "current_password",
+        )
     )
+
+    if field_error is not None:
+        return field_error
 
     try:
         codes = (
@@ -705,7 +893,7 @@ def generate_recovery_codes():
         ),
     )
 
-    return success_response(
+    return no_store_response(
         data={
             "codes": codes,
         },
@@ -777,7 +965,12 @@ def complete_totp_challenge():
         "marks_auth"
     ]
 
-    data = request.get_json(silent=True)
+    data, request_error = (
+        get_json_object()
+    )
+
+    if request_error is not None:
+        return request_error
 
     if not isinstance(data, dict):
         return error_response(
@@ -789,11 +982,23 @@ def complete_totp_challenge():
             status_code=400,
         )
 
-    challenge_id = data.get(
-        "challenge_id"
+    challenge_id, field_error = (
+        get_required_string(
+            data,
+            "challenge_id",
+        )
     )
 
-    code = data.get("code")
+    if field_error is not None:
+        return field_error
+
+    code, field_error = get_required_string(
+        data,
+        "code",
+    )
+
+    if field_error is not None:
+        return field_error
 
     try:
         challenge = (
@@ -907,7 +1112,12 @@ def complete_recovery_code_challenge():
         "marks_auth"
     ]
 
-    data = request.get_json(silent=True)
+    data, request_error = (
+        get_json_object()
+    )
+
+    if request_error is not None:
+        return request_error
 
     if not isinstance(data, dict):
         return error_response(
@@ -919,13 +1129,25 @@ def complete_recovery_code_challenge():
             status_code=400,
         )
 
-    challenge_id = data.get(
-        "challenge_id"
+    challenge_id, field_error = (
+        get_required_string(
+            data,
+            "challenge_id",
+        )
     )
 
-    recovery_code = data.get(
-        "recovery_code"
+    if field_error is not None:
+        return field_error
+
+    recovery_code, field_error = (
+        get_required_string(
+            data,
+            "recovery_code",
+        )
     )
+
+    if field_error is not None:
+        return field_error
 
     try:
         challenge = (

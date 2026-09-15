@@ -147,3 +147,55 @@ def test_throttle_runs_after_csrf(client):
     )
 
     assert response.status_code == 200
+
+def test_throttle_handles_non_object_json(
+    client,
+):
+    csrf = get_csrf(client)
+
+    response = client.post(
+        "/auth/forgot-password",
+        json=[
+            "not",
+            "an",
+            "object",
+        ],
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert response.status_code == 400
+
+    data = response.get_json()
+
+    assert (
+        data["error"]["code"]
+        == "INVALID_REQUEST"
+    )
+
+def test_throttle_handles_non_string_email(
+    client,
+):
+    csrf = get_csrf(client)
+
+    response = client.post(
+        "/auth/forgot-password",
+        json={
+            "email": {
+                "bad": "type"
+            },
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert response.status_code == 400
+
+    data = response.get_json()
+
+    assert (
+        data["error"]["code"]
+        == "INVALID_REQUEST"
+    )

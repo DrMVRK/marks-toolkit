@@ -1,3 +1,44 @@
+import pyotp
+
+
+def enable_totp(client):
+    csrf = get_csrf(client)
+
+    enroll = client.post(
+        "/auth/mfa/totp/enroll",
+        json={
+            "current_password":
+                "TestingPassword123!",
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert enroll.status_code == 200
+
+    secret = (
+        enroll.get_json()
+        ["data"]
+        ["secret"]
+    )
+
+    code = pyotp.TOTP(
+        secret
+    ).now()
+
+    verify = client.post(
+        "/auth/mfa/totp/verify-enrollment",
+        json={
+            "code": code,
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert verify.status_code == 200
+
 def get_csrf(client):
     response = client.get("/auth/csrf")
 
@@ -378,4 +419,32 @@ def test_recovery_code_generation_is_rate_limited(
     assert (
         data["error"]["code"]
         == "RATE_LIMITED"
+    )
+
+def test_recovery_code_response_is_not_cached(
+    client,
+):
+    register_user(client)
+    login_user(client)
+
+    enable_totp(client)
+
+    csrf = get_csrf(client)
+
+    response = client.post(
+        "/auth/mfa/recovery-codes/generate",
+        json={
+            "current_password":
+                "TestingPassword123!",
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert response.status_code == 200
+
+    assert (
+        response.headers["Cache-Control"]
+        == "no-store"
     )

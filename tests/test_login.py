@@ -190,3 +190,91 @@ def test_unknown_user_runs_dummy_password_verification(
         pass
 
     assert calls == 1
+
+def test_login_rejects_non_string_identity(
+    client,
+):
+    csrf = get_csrf(client)
+
+    response = client.post(
+        "/auth/login",
+        json={
+            "identity": [
+                "not",
+                "a",
+                "string",
+            ],
+            "password":
+                "TestingPassword123!",
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert response.status_code == 400
+
+    data = response.get_json()
+
+    assert (
+        data["error"]["code"]
+        == "INVALID_REQUEST"
+    )
+
+
+def test_login_rejects_non_string_password(
+    client,
+):
+    csrf = get_csrf(client)
+
+    response = client.post(
+        "/auth/login",
+        json={
+            "identity":
+                "mark@example.com",
+            "password": {
+                "bad": "type"
+            },
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert response.status_code == 400
+
+    data = response.get_json()
+
+    assert (
+        data["error"]["code"]
+        == "INVALID_REQUEST"
+    )
+
+
+def test_login_rejects_non_boolean_remember(
+    client,
+):
+    csrf = get_csrf(client)
+
+    response = client.post(
+        "/auth/login",
+        json={
+            "identity":
+                "mark@example.com",
+            "password":
+                "TestingPassword123!",
+            "remember": "yes",
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert response.status_code == 400
+
+    data = response.get_json()
+
+    assert (
+        data["error"]["code"]
+        == "INVALID_REQUEST"
+    )

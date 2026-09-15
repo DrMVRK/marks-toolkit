@@ -259,3 +259,52 @@ def test_disabling_totp_revokes_recovery_codes(
         )
         is False
     )
+
+def test_disabling_totp_rotates_auth_id_and_keeps_current_session(
+    client,
+    app,
+):
+    register_user(client)
+    login_user(client)
+
+    enable_totp(client)
+
+    state = app.extensions[
+        "marks_auth"
+    ]
+
+    user = state.user_store.find_by_identity(
+        "mark@example.com"
+    )
+
+    old_auth_id = user.auth_id
+
+    csrf = get_csrf(client)
+
+    response = client.post(
+        "/auth/mfa/totp/disable",
+        json={
+            "current_password":
+                "TestingPassword123!",
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert response.status_code == 200
+
+    assert user.auth_id != old_auth_id
+
+    me = client.get(
+        "/auth/me"
+    )
+
+    assert me.status_code == 200
+
+    assert (
+        me.get_json()
+        ["data"]
+        ["authenticated"]
+        is True
+    )

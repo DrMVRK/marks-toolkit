@@ -11,12 +11,29 @@ export default function ResetPasswordView({
         ready
     } = useAuth();
 
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
+    const [password, setPassword] =
+        useState("");
 
-    const [error, setError] = useState(null);
-    const [success, setSuccess] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const [
+        confirmPassword,
+        setConfirmPassword
+    ] = useState("");
+
+    const [error, setError] =
+        useState(null);
+
+    const [success, setSuccess] =
+        useState(null);
+
+    const [loading, setLoading] =
+        useState(false);
+
+
+    function clearPasswordFields() {
+        setPassword("");
+        setConfirmPassword("");
+    }
+
 
     async function handleSubmit(event) {
         event.preventDefault();
@@ -29,9 +46,12 @@ export default function ResetPasswordView({
         setSuccess(null);
 
         if (!resetToken) {
+            clearPasswordFields();
+
             setError({
                 code: "MISSING_RESET_TOKEN",
-                message: "This password reset link is invalid."
+                message:
+                    "This password reset link is invalid."
             });
 
             return;
@@ -40,7 +60,8 @@ export default function ResetPasswordView({
         if (password !== confirmPassword) {
             setError({
                 code: "PASSWORD_MISMATCH",
-                message: "Passwords do not match."
+                message:
+                    "Passwords do not match."
             });
 
             return;
@@ -49,15 +70,18 @@ export default function ResetPasswordView({
         setLoading(true);
 
         try {
-            const response = await client.resetPassword({
-                token: resetToken,
-                password
-            });
+            const response =
+                await client.resetPassword({
+                    token: resetToken,
+                    password
+                });
 
             if (!response.ok) {
                 setError(response.error);
                 return;
             }
+
+            clearPasswordFields();
 
             setSuccess(
                 response.message ||
@@ -67,13 +91,24 @@ export default function ResetPasswordView({
         } catch (requestError) {
             setError({
                 code: "NETWORK_ERROR",
-                message: "Unable to contact the authentication server."
+                message:
+                    "Unable to contact the authentication server."
             });
 
         } finally {
             setLoading(false);
         }
     }
+
+
+    function handleBackToLogin() {
+        clearPasswordFields();
+        setError(null);
+        setSuccess(null);
+
+        onLogin();
+    }
+
 
     return (
         <form onSubmit={handleSubmit}>
@@ -84,7 +119,9 @@ export default function ResetPasswordView({
                 placeholder="New password"
                 value={password}
                 onChange={(event) =>
-                    setPassword(event.target.value)
+                    setPassword(
+                        event.target.value
+                    )
                 }
                 autoComplete="new-password"
             />
@@ -94,7 +131,9 @@ export default function ResetPasswordView({
                 placeholder="Confirm new password"
                 value={confirmPassword}
                 onChange={(event) =>
-                    setConfirmPassword(event.target.value)
+                    setConfirmPassword(
+                        event.target.value
+                    )
                 }
                 autoComplete="new-password"
             />
@@ -115,15 +154,19 @@ export default function ResetPasswordView({
                 type="submit"
                 disabled={!ready || loading}
             >
-                {loading
-                    ? "Resetting password..."
-                    : "Reset Password"}
+                {
+                    loading
+                        ? "Resetting password..."
+                        : "Reset Password"
+                }
             </button>
 
             <div className="marks-auth-actions">
                 <button
                     type="button"
-                    onClick={onLogin}
+                    onClick={
+                        handleBackToLogin
+                    }
                 >
                     Back to Login
                 </button>

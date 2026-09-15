@@ -59,7 +59,10 @@ def throttle(
                 silent=True
             )
 
-            if not isinstance(data, dict):
+            if not isinstance(
+                data,
+                dict,
+            ):
                 data = {}
 
             throttle_keys = []
@@ -85,6 +88,12 @@ def throttle(
                             .strip()
                             .casefold()
                         )
+
+                        if not identity_value:
+                            identity_value = (
+                                "<invalid>"
+                            )
+
                     else:
                         identity_value = (
                             "<invalid>"
@@ -100,13 +109,15 @@ def throttle(
                         str,
                     ):
                         identity_value = (
-                            challenge_id.strip()
+                            challenge_id
+                            .strip()
                         )
 
                         if not identity_value:
                             identity_value = (
                                 "<invalid>"
                             )
+
                     else:
                         identity_value = (
                             "<invalid>"
@@ -127,28 +138,21 @@ def throttle(
                     )
                 )
 
-            for throttle_key in throttle_keys:
-                if (
-                    state.throttle_service
-                    .is_blocked(
-                        throttle_key,
-                        limit,
-                        window,
-                    )
-                ):
-                    return error_response(
-                        code="RATE_LIMITED",
-                        message=(
-                            "Too many requests. "
-                            "Please try again later."
-                        ),
-                        status_code=429,
-                    )
-
-            for throttle_key in throttle_keys:
-                state.throttle_service.record(
-                    throttle_key,
-                    window,
+            if (
+                state.throttle_service
+                .check_and_record(
+                    keys=throttle_keys,
+                    limit=limit,
+                    window_seconds=window,
+                )
+            ):
+                return error_response(
+                    code="RATE_LIMITED",
+                    message=(
+                        "Too many requests. "
+                        "Please try again later."
+                    ),
+                    status_code=429,
                 )
 
             return view_function(

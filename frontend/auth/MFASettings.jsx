@@ -99,19 +99,33 @@ export default function MFASettings() {
     }
 
 
-    async function beginTotpEnrollment() {
+    async function beginTotpEnrollment(
+        currentPassword
+    ) {
+        setReauthLoading(true);
+        setReauthError(null);
+
         setError(null);
         setMessage("");
         setRecoveryCodes([]);
         setVerificationCode("");
+        setSetupSecret("");
+        setProvisioningUri("");
 
         try {
             const response = await client.post(
-                "/mfa/totp/enroll"
+                "/mfa/totp/enroll",
+                {
+                    current_password:
+                        currentPassword
+                }
             );
 
             if (!response.ok) {
-                setError(response.error);
+                setReauthError(
+                    response.error
+                );
+
                 return;
             }
 
@@ -120,12 +134,15 @@ export default function MFASettings() {
             );
 
             setProvisioningUri(
-                response.data.provisioning_uri || ""
+                response.data.provisioning_uri
+                || ""
             );
 
             setMessage(
                 "Scan the QR code with your authenticator app, then enter the current 6-digit code."
             );
+
+            setReauthAction(null);
 
         } catch (requestError) {
             console.error(
@@ -133,11 +150,14 @@ export default function MFASettings() {
                 requestError
             );
 
-            setError({
+            setReauthError({
                 code: "NETWORK_ERROR",
                 message:
                     "Unable to start TOTP enrollment."
             });
+
+        } finally {
+            setReauthLoading(false);
         }
     }
 
@@ -374,9 +394,12 @@ export default function MFASettings() {
                     {!setupSecret && (
                         <button
                             type="button"
-                            onClick={
-                                beginTotpEnrollment
-                            }
+                            onClick={() => {
+                                setReauthError(null);
+                                setReauthAction(
+                                    "setup-totp"
+                                );
+                            }}
                         >
                             Set Up Authenticator
                         </button>
@@ -555,31 +578,44 @@ export default function MFASettings() {
                 open={reauthAction !== null}
 
                 title={
-                    reauthAction ===
-                    "disable-totp"
-                        ? "Disable Authenticator"
-                        : "Generate Recovery Codes"
+                    reauthAction === "setup-totp"
+                        ? "Set Up Authenticator"
+                        : reauthAction === "disable-totp"
+                            ? "Disable Authenticator"
+                            : "Generate Recovery Codes"
                 }
 
                 message={
-                    reauthAction ===
-                    "disable-totp"
-                        ? "Enter your current password to disable authenticator MFA."
-                        : "Enter your current password to generate a new set of recovery codes."
+                    reauthAction === "setup-totp"
+                        ? "Enter your current password to set up authenticator MFA."
+                        : reauthAction === "disable-totp"
+                            ? "Enter your current password to disable authenticator MFA."
+                            : "Enter your current password to generate a new set of recovery codes."
                 }
 
                 confirmLabel={
-                    reauthAction ===
-                    "disable-totp"
-                        ? "Disable Authenticator"
-                        : "Generate Codes"
+                    reauthAction === "setup-totp"
+                        ? "Continue Setup"
+                        : reauthAction === "disable-totp"
+                            ? "Disable Authenticator"
+                            : "Generate Codes"
                 }
-
                 loading={reauthLoading}
 
                 error={reauthError}
 
                 onConfirm={(password) => {
+                    if (
+                        reauthAction ===
+                        "setup-totp"
+                    ) {
+                        beginTotpEnrollment(
+                            password
+                        );
+
+                        return;
+                    }
+
                     if (
                         reauthAction ===
                         "disable-totp"

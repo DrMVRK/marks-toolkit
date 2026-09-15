@@ -317,3 +317,51 @@ def test_reset_rotates_auth_id_exactly_once(
 
     assert update_calls == 1
     assert rotate_calls == 0
+
+def test_reset_rejects_non_string_token(
+    client,
+):
+    csrf = get_csrf(client)
+
+    response = client.post(
+        "/auth/reset-password",
+        json={
+            "token": {
+                "bad": "type"
+            },
+            "password":
+                "TestingPassword123!",
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert response.status_code == 400
+    assert (
+        response.get_json()["error"]["code"]
+        == "INVALID_REQUEST"
+    )
+
+def test_forgot_password_rejects_non_string_email(
+    client,
+):
+    csrf = get_csrf(client)
+
+    response = client.post(
+        "/auth/forgot-password",
+        json={
+            "email": [
+                "bad@example.com"
+            ],
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert response.status_code == 400
+    assert (
+        response.get_json()["error"]["code"]
+        == "INVALID_REQUEST"
+    )

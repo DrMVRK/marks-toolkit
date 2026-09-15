@@ -92,3 +92,77 @@ def test_successful_login_is_audited(
         "auth_event=login_success"
         in caplog.text
     )
+
+def test_audit_logger_redacts_nested_sensitive_values(
+    caplog,
+):
+    from marks_toolkit.auth.audit import (
+        StandardAuditLogger,
+    )
+
+    logger = StandardAuditLogger()
+
+    with caplog.at_level(
+        "INFO",
+        logger="marks_toolkit.auth",
+    ):
+        logger.log(
+            "test_event",
+            username="Mark",
+            current_password="secret-1",
+            metadata={
+                "reset_token":
+                    "secret-2",
+                "nested": {
+                    "recovery_codes": [
+                        "code-1",
+                        "code-2",
+                    ],
+                    "safe_value":
+                        "hello",
+                },
+            },
+        )
+
+    output = caplog.text
+
+    assert "Mark" in output
+    assert "hello" in output
+
+    assert "secret-1" not in output
+    assert "secret-2" not in output
+    assert "code-1" not in output
+    assert "code-2" not in output
+
+    assert "<redacted>" in output
+
+def test_audit_logger_redacts_sensitive_key_variants(
+    caplog,
+):
+    from marks_toolkit.auth.audit import (
+        StandardAuditLogger,
+    )
+
+    logger = StandardAuditLogger()
+
+    with caplog.at_level(
+        "INFO",
+        logger="marks_toolkit.auth",
+    ):
+        logger.log(
+            "test_event",
+            password_confirmation="alpha",
+            session_cookie="beta",
+            provisioning_uri="gamma",
+            access_token="delta",
+            safe_field="visible",
+        )
+
+    output = caplog.text
+
+    assert "visible" in output
+
+    assert "alpha" not in output
+    assert "beta" not in output
+    assert "gamma" not in output
+    assert "delta" not in output

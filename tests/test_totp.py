@@ -405,3 +405,139 @@ def test_totp_enrollment_requires_current_password(
         data["error"]["code"]
         == "INVALID_MFA_PASSWORD"
     )
+
+def test_totp_enrollment_rejects_non_string_code(
+    client,
+):
+    register_user(client)
+    login_user(client)
+
+    csrf = get_csrf(client)
+
+    enroll = client.post(
+        "/auth/mfa/totp/enroll",
+        json={
+            "current_password":
+                "TestingPassword123!",
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert enroll.status_code == 200
+
+    response = client.post(
+        "/auth/mfa/totp/verify-enrollment",
+        json={
+            "code": {
+                "bad": "type"
+            },
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert response.status_code == 400
+    assert (
+        response.get_json()["error"]["code"]
+        == "INVALID_REQUEST"
+    )
+
+def test_totp_enrollment_response_is_not_cached(
+    client,
+):
+    register_user(client)
+    login_user(client)
+
+    csrf = get_csrf(client)
+
+    response = client.post(
+        "/auth/mfa/totp/enroll",
+        json={
+            "current_password":
+                "TestingPassword123!",
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert response.status_code == 200
+
+    assert (
+        response.headers["Cache-Control"]
+        == "no-store"
+    )
+
+def test_enabling_totp_rotates_auth_id_and_keeps_current_session(
+    client,
+    app,
+):
+    register_user(client)
+    login_user(client)
+
+    state = app.extensions[
+        "marks_auth"
+    ]
+
+    user = state.user_store.find_by_identity(
+        "mark@example.com"
+    )
+
+    old_auth_id = user.auth_id
+
+    csrf = get_csrf(client)
+
+    enroll = client.post(
+        "/auth/mfa/totp/enroll",
+        json={
+            "current_password":
+                "TestingPassword123!",
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert enroll.status_code == 200
+
+    import pyotp
+
+    secret = (
+        enroll.get_json()
+        ["data"]
+        ["secret"]
+    )
+
+    code = pyotp.TOTP(
+        secret
+    ).now()
+
+    response = client.post(
+        "/auth/mfa/totp/verify-enrollment",
+        json={
+            "code": code,
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert response.status_code == 200
+
+    assert user.auth_id != old_auth_id
+
+    me = client.get(
+        "/auth/me"
+    )
+
+    assert me.status_code == 200
+
+    assert (
+        me.get_json()
+        ["data"]
+        ["authenticated"]
+        is True
+    )
