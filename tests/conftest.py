@@ -117,9 +117,17 @@ def app():
     app.config["TESTING"] = True
     app.config["SECRET_KEY"] = "pytest-secret-key"
 
+    app.config[
+        "MARKS_AUTH_ALLOW_CONSOLE_MAILER"
+    ] = True
+
     app.config["MARKS_AUTH_RESET_URL"] = (
         "http://localhost/reset-password"
     )
+
+    app.config[
+        "MARKS_AUTH_ALLOW_INSECURE_RESET_URL"
+    ] = True
 
     app.config["MARKS_AUTH_COOKIE_SECURE"] = False
 

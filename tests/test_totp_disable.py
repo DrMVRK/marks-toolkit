@@ -1,5 +1,7 @@
 import pyotp
 
+PASSWORD = "TestingPassword123!"
+
 
 def get_csrf(client):
     response = client.get("/auth/csrf")
@@ -46,6 +48,9 @@ def enable_totp(client):
 
     enroll = client.post(
         "/auth/mfa/totp/enroll",
+        json={
+            "current_password": PASSWORD,
+        },
         headers={
             "X-CSRF-Token": csrf_token
         },
@@ -196,4 +201,61 @@ def test_totp_disable_is_rate_limited(
     assert (
         data["error"]["code"]
         == "RATE_LIMITED"
+    )
+
+
+def test_disabling_totp_revokes_recovery_codes(
+    client,
+    app,
+):
+    register_user(client)
+    login_user(client)
+
+    enable_totp(client)
+
+    state = app.extensions[
+        "marks_auth"
+    ]
+
+    user = state.user_store.find_by_identity(
+        "mark@example.com"
+    )
+
+    state.mfa_store.replace_recovery_codes(
+        user.id,
+        [
+            "test-recovery-hash-1",
+            "test-recovery-hash-2",
+        ],
+    )
+
+    csrf_token = get_csrf(client)
+
+    response = client.post(
+        "/auth/mfa/totp/disable",
+        json={
+            "current_password":
+                "TestingPassword123!",
+        },
+        headers={
+            "X-CSRF-Token": csrf_token
+        },
+    )
+
+    assert response.status_code == 200
+
+    assert (
+        state.mfa_store.consume_recovery_code(
+            user.id,
+            "test-recovery-hash-1",
+        )
+        is False
+    )
+
+    assert (
+        state.mfa_store.consume_recovery_code(
+            user.id,
+            "test-recovery-hash-2",
+        )
+        is False
     )

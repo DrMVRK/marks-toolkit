@@ -31,6 +31,7 @@ from .mfa_challenge_store import (
 
 from flask_login import LoginManager
 from werkzeug.middleware.proxy_fix import ProxyFix
+from urllib.parse import urlsplit
 
 
 class AuthKit:
@@ -50,10 +51,17 @@ class AuthKit:
                 "user_store must be an instance of UserStore"
             )
 
-        if mailer is None:
-            mailer = ConsoleMailer()
-
         config = AuthConfig(app)
+
+        if mailer is None:
+            if not config.allow_console_mailer:
+                raise RuntimeError(
+                    "MARKS AuthKit requires an explicit mailer. "
+                    "For local development or testing only, set "
+                    "MARKS_AUTH_ALLOW_CONSOLE_MAILER=True."
+                )
+
+            mailer = ConsoleMailer()
 
         # -------------------------------------------------
         # Required base configuration
@@ -71,6 +79,40 @@ class AuthKit:
                 "MARKS_AUTH_RESET_URL to be configured."
             )
 
+        reset_url_parts = urlsplit(
+            config.reset_url
+        )
+
+        if (
+            reset_url_parts.scheme
+            not in ("http", "https")
+            or not reset_url_parts.hostname
+        ):
+            raise RuntimeError(
+                "MARKS_AUTH_RESET_URL must be an "
+                "absolute HTTP or HTTPS URL."
+            )
+
+        if (
+            reset_url_parts.username is not None
+            or reset_url_parts.password is not None
+        ):
+            raise RuntimeError(
+                "MARKS_AUTH_RESET_URL must not "
+                "contain embedded credentials."
+            )
+
+        if (
+            reset_url_parts.scheme != "https"
+            and not config.allow_insecure_reset_url
+        ):
+            raise RuntimeError(
+                "MARKS_AUTH_RESET_URL must use HTTPS. "
+                "For local development or testing only, "
+                "set "
+                "MARKS_AUTH_ALLOW_INSECURE_RESET_URL=True."
+            )
+        
         if captcha_provider is None:
             raise RuntimeError(
                 "MARKS AuthKit requires an explicit "
@@ -184,20 +226,44 @@ class AuthKit:
             config.remember_duration
         )
 
+        # AuthKit must never weaken stronger cookie
+        # protections already configured by the host app.
+
         app.config["REMEMBER_COOKIE_HTTPONLY"] = True
-        app.config["REMEMBER_COOKIE_SAMESITE"] = (
-            config.cookie_samesite
-        )
-        app.config["REMEMBER_COOKIE_SECURE"] = (
-            config.cookie_secure
+        app.config["SESSION_COOKIE_HTTPONLY"] = True
+
+        existing_remember_samesite = app.config.get(
+            "REMEMBER_COOKIE_SAMESITE"
         )
 
-        app.config["SESSION_COOKIE_HTTPONLY"] = True
-        app.config["SESSION_COOKIE_SAMESITE"] = (
-            config.cookie_samesite
+        existing_session_samesite = app.config.get(
+            "SESSION_COOKIE_SAMESITE"
         )
-        app.config["SESSION_COOKIE_SECURE"] = (
-            config.cookie_secure
+
+        if existing_remember_samesite is None:
+            app.config["REMEMBER_COOKIE_SAMESITE"] = (
+                config.cookie_samesite
+            )
+
+        if existing_session_samesite is None:
+            app.config["SESSION_COOKIE_SAMESITE"] = (
+                config.cookie_samesite
+            )
+
+        app.config["REMEMBER_COOKIE_SECURE"] = bool(
+            app.config.get(
+                "REMEMBER_COOKIE_SECURE",
+                False,
+            )
+            or config.cookie_secure
+        )
+
+        app.config["SESSION_COOKIE_SECURE"] = bool(
+            app.config.get(
+                "SESSION_COOKIE_SECURE",
+                False,
+            )
+            or config.cookie_secure
         )
 
         @self.login_manager.user_loader

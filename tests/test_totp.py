@@ -130,6 +130,10 @@ def test_totp_enrollment_returns_setup_data(
 
     response = client.post(
         "/auth/mfa/totp/enroll",
+        json={
+            "current_password":
+                "TestingPassword123!",
+        },
         headers={
             "X-CSRF-Token": csrf_token
         },
@@ -173,6 +177,10 @@ def test_invalid_totp_enrollment_code_rejected(
 
     enroll = client.post(
         "/auth/mfa/totp/enroll",
+        json={
+            "current_password":
+                "TestingPassword123!",
+        },
         headers={
             "X-CSRF-Token": csrf_token
         },
@@ -209,6 +217,10 @@ def test_valid_totp_code_enables_totp(
 
     enroll = client.post(
         "/auth/mfa/totp/enroll",
+        json={
+            "current_password":
+                "TestingPassword123!",
+        },
         headers={
             "X-CSRF-Token": csrf_token
         },
@@ -266,6 +278,10 @@ def test_cannot_begin_second_totp_enrollment_when_enabled(
 
     first = client.post(
         "/auth/mfa/totp/enroll",
+        json={
+            "current_password":
+                "TestingPassword123!",
+        },
         headers={
             "X-CSRF-Token": csrf_token
         },
@@ -289,6 +305,10 @@ def test_cannot_begin_second_totp_enrollment_when_enabled(
 
     second = client.post(
         "/auth/mfa/totp/enroll",
+        json={
+            "current_password":
+                "TestingPassword123!",
+        },
         headers={
             "X-CSRF-Token": csrf_token
         },
@@ -312,7 +332,10 @@ def test_totp_enrollment_verification_is_rate_limited(
 
     start_response = client.post(
         "/auth/mfa/totp/enroll",
-        json={},
+        json={
+            "current_password":
+                "TestingPassword123!",
+        },
         headers={
             "X-CSRF-Token": csrf_token
         },
@@ -353,4 +376,32 @@ def test_totp_enrollment_verification_is_rate_limited(
     assert (
         data["error"]["code"]
         == "RATE_LIMITED"
+    )
+
+def test_totp_enrollment_requires_current_password(
+    client,
+):
+    register_user(client)
+    login_user(client)
+
+    csrf = get_csrf(client)
+
+    response = client.post(
+        "/auth/mfa/totp/enroll",
+        json={
+            "current_password":
+                "WrongPassword123!",
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    data = response.get_json()
+
+    assert response.status_code == 400
+
+    assert (
+        data["error"]["code"]
+        == "INVALID_MFA_PASSWORD"
     )

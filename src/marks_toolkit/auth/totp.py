@@ -23,7 +23,28 @@ class TotpService:
         )
         self.issuer_name = issuer_name
 
-    def begin_enrollment(self, user):
+    def begin_enrollment(
+        self,
+        user,
+        current_password,
+        password_service,
+    ):
+        if (
+            not isinstance(current_password, str)
+            or not current_password
+        ):
+            raise InvalidMFAPasswordError(
+                "Current password is incorrect."
+            )
+
+        if not password_service.verify_password(
+            user.password_hash,
+            current_password,
+        ):
+            raise InvalidMFAPasswordError(
+                "Current password is incorrect."
+            )
+
         existing = self.mfa_store.get_totp(
             user.id
         )
@@ -184,6 +205,14 @@ class TotpService:
         current_password,
         password_service,
     ):
+        if (
+            not isinstance(current_password, str)
+            or not current_password
+        ):
+            raise InvalidMFAPasswordError(
+                "Current password is incorrect."
+            )
+
         if not password_service.verify_password(
             user.password_hash,
             current_password,
@@ -206,6 +235,11 @@ class TotpService:
 
         self.mfa_store.delete_totp(
             user.id
+        )
+
+        self.mfa_store.replace_recovery_codes(
+            user.id,
+            [],
         )
 
         return True

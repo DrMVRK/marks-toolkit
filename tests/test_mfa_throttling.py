@@ -50,6 +50,9 @@ def enable_totp(client):
 
     enrollment = client.post(
         "/auth/mfa/totp/enroll",
+        json={
+            "current_password": PASSWORD,
+        },
         headers={
             "X-CSRF-Token": csrf
         },
@@ -185,4 +188,52 @@ def test_mfa_rate_limit_does_not_create_session(
     assert (
         me["data"]["authenticated"]
         is False
+    )
+
+def test_mfa_challenge_limit_applies_across_ips(
+    client,
+):
+    challenge_id = prepare_mfa_login(
+        client
+    )
+
+    csrf = get_csrf(client)
+
+    for index in range(5):
+        response = client.post(
+            "/auth/mfa/challenge/totp",
+            json={
+                "challenge_id": challenge_id,
+                "code": "000000",
+            },
+            headers={
+                "X-CSRF-Token": csrf,
+                "X-Forwarded-For":
+                    f"203.0.113.{index + 1}",
+            },
+        )
+
+        assert response.status_code == 401
+
+    blocked = client.post(
+        "/auth/mfa/challenge/totp",
+        json={
+            "challenge_id": challenge_id,
+            "code": "000000",
+        },
+        headers={
+            "X-CSRF-Token": csrf,
+            "X-Forwarded-For":
+                "203.0.113.99",
+        },
+    )
+
+    data = blocked.get_json()
+
+    assert blocked.status_code == 429
+    assert data["ok"] is False
+
+    assert (
+        data["error"]["code"]
+        == "RATE_LIMITED"
     )

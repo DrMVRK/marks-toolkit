@@ -146,3 +146,47 @@ def test_login_requires_csrf(client):
 
     assert response.status_code == 403
     assert data["ok"] is False
+
+
+def test_unknown_user_runs_dummy_password_verification(
+    app,
+    monkeypatch,
+):
+    state = app.extensions[
+        "marks_auth"
+    ]
+
+    calls = 0
+
+    original_dummy_verify = (
+        state.password_service
+        .verify_dummy_password
+    )
+
+    def tracked_dummy_verify(
+        password,
+    ):
+        nonlocal calls
+
+        calls += 1
+
+        return original_dummy_verify(
+            password
+        )
+
+    monkeypatch.setattr(
+        state.password_service,
+        "verify_dummy_password",
+        tracked_dummy_verify,
+    )
+
+    try:
+        state.login_service.authenticate(
+            identity="missing@example.com",
+            password="WrongPassword123!",
+        )
+
+    except Exception:
+        pass
+
+    assert calls == 1

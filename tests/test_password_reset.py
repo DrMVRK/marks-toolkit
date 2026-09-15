@@ -240,3 +240,80 @@ def test_invalid_reset_token_rejected(client):
     assert response.status_code == 400
     assert data["ok"] is False
     assert data["error"]["code"] == "INVALID_RESET_TOKEN"
+
+def test_reset_rotates_auth_id_exactly_once(
+    client,
+    app,
+    monkeypatch,
+):
+    register_user(client)
+
+    state = app.extensions[
+        "marks_auth"
+    ]
+
+    user = state.user_store.find_by_identity(
+        "mark@example.com"
+    )
+
+    original_update = (
+        state.user_store
+        .update_password_and_rotate_auth_id
+    )
+
+    update_calls = 0
+    rotate_calls = 0
+
+    def tracked_update(
+        user,
+        password_hash,
+    ):
+        nonlocal update_calls
+
+        update_calls += 1
+
+        return original_update(
+            user,
+            password_hash,
+        )
+
+    def tracked_rotate(user):
+        nonlocal rotate_calls
+
+        rotate_calls += 1
+
+    monkeypatch.setattr(
+        state.user_store,
+        "update_password_and_rotate_auth_id",
+        tracked_update,
+    )
+
+    monkeypatch.setattr(
+        state.user_store,
+        "rotate_auth_id",
+        tracked_rotate,
+    )
+
+    token = (
+        state.reset_token_service
+        .generate(user.auth_id)
+    )
+
+    csrf = get_csrf(client)
+
+    response = client.post(
+        "/auth/reset-password",
+        json={
+            "token": token,
+            "password":
+                "NewTestingPassword123!",
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert response.status_code == 200
+
+    assert update_calls == 1
+    assert rotate_calls == 0

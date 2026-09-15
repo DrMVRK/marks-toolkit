@@ -470,10 +470,32 @@ def enroll_totp():
             status_code=404,
         )
 
+    data = request.get_json(
+        silent=True
+    )
+
+    if not isinstance(data, dict):
+        return error_response(
+            code="INVALID_REQUEST",
+            message=(
+                "Request body must contain "
+                "a JSON object."
+            ),
+            status_code=400,
+        )
+
+    current_password = data.get(
+        "current_password"
+    )
+
     try:
         enrollment = (
             state.totp_service.begin_enrollment(
-                current_user
+                user=current_user,
+                current_password=current_password,
+                password_service=(
+                    state.password_service
+                ),
             )
         )
 

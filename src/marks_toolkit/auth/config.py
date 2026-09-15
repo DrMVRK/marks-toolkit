@@ -36,6 +36,16 @@ class AuthConfig:
             "MARKS_AUTH_RESET_URL"
         )
 
+        self.allow_insecure_reset_url = app.config.get(
+            "MARKS_AUTH_ALLOW_INSECURE_RESET_URL",
+            False,
+        )
+
+        self.allow_console_mailer = app.config.get(
+            "MARKS_AUTH_ALLOW_CONSOLE_MAILER",
+            False,
+        )
+
         self.captcha_site_key = app.config.get(
             "MARKS_AUTH_CAPTCHA_SITE_KEY"
         )
@@ -130,7 +140,7 @@ class AuthConfig:
 
         self.cookie_secure = app.config.get(
             "MARKS_AUTH_COOKIE_SECURE",
-            False,
+            True,
         )
 
         self.cookie_samesite = app.config.get(

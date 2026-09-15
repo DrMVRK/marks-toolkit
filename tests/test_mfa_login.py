@@ -50,6 +50,9 @@ def enable_totp(client):
 
     enrollment = client.post(
         "/auth/mfa/totp/enroll",
+        json={
+            "current_password": PASSWORD,
+        },
         headers={
             "X-CSRF-Token": csrf
         },
