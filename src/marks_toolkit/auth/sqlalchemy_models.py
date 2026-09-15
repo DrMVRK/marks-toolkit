@@ -1,8 +1,17 @@
 from sqlalchemy.orm import DeclarativeBase
 import secrets
 
-from sqlalchemy import Boolean, String
-from sqlalchemy.orm import Mapped, mapped_column
+from datetime import datetime, timezone
+
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    LargeBinary,
+    String,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .user_contract import AuthUser
 
@@ -63,3 +72,132 @@ class AuthUserModel(AuthBase, AuthUser):
     @property
     def is_active(self):
         return self.active
+
+
+class AuthTotpModel(AuthBase):
+    __tablename__ = "marks_auth_totp"
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "marks_auth_users.id",
+            ondelete="CASCADE",
+        ),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+    encrypted_secret: Mapped[bytes] = mapped_column(
+        LargeBinary,
+        nullable=False,
+    )
+
+    enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+
+class AuthPasskeyModel(AuthBase):
+    __tablename__ = "marks_auth_passkeys"
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "marks_auth_users.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+        index=True,
+    )
+
+    credential_id: Mapped[bytes] = mapped_column(
+        LargeBinary,
+        unique=True,
+        nullable=False,
+    )
+
+    public_key: Mapped[bytes] = mapped_column(
+        LargeBinary,
+        nullable=False,
+    )
+
+    sign_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+    )
+
+    name: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    last_used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+
+class AuthRecoveryCodeModel(AuthBase):
+    __tablename__ = "marks_auth_recovery_codes"
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "marks_auth_users.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+        index=True,
+    )
+
+    code_hash: Mapped[str] = mapped_column(
+        String(512),
+        nullable=False,
+    )
+
+    used: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )

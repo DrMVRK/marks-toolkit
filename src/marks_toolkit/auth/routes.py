@@ -183,6 +183,58 @@ def login():
         ip_address=ip_address,
     )
 
+    if (
+        state.config.mfa_enabled
+        and state.mfa_store.has_enabled_mfa(
+            user.id
+        )
+    ):
+        challenge_id = (
+            state.mfa_challenge_service.create(
+                user=user,
+                remember=remember,
+            )
+        )
+
+        methods = []
+
+        totp = state.mfa_store.get_totp(
+            user.id
+        )
+
+        if (
+            totp is not None
+            and totp.enabled
+        ):
+            methods.append("totp")
+
+        if (
+            state.recovery_code_manager
+            .count_unused_codes(user)
+            > 0
+        ):
+            methods.append(
+                "recovery_code"
+            )
+
+        state.audit_logger.log(
+            "mfa_challenge_created",
+            auth_id=user.auth_id,
+            username=user.username,
+            ip_address=ip_address,
+            methods=methods,
+        )
+
+        return success_response(
+            data={
+                "mfa_required": True,
+                "challenge_id": challenge_id,
+                "methods": methods,
+            },
+            message="Additional authentication is required.",
+            status_code=202,
+        )
+
     login_user(
         user,
         remember=remember,
@@ -355,6 +407,298 @@ def change_password():
     )
 
 
+@auth_bp.get("/mfa/status")
+@login_required
+def mfa_status():
+    state = current_app.extensions["marks_auth"]
+
+    if not state.config.mfa_enabled:
+        return success_response(
+            data={
+                "mfa_enabled": False,
+                "totp_enabled": False,
+                "passkey_count": 0,
+            }
+        )
+
+    totp = state.mfa_store.get_totp(
+        current_user.id
+    )
+
+    passkeys = state.mfa_store.list_passkeys(
+        current_user.id
+    )
+
+    return success_response(
+        data={
+            "mfa_enabled": (
+                state.mfa_store.has_enabled_mfa(
+                    current_user.id
+                )
+            ),
+            "totp_enabled": (
+                totp is not None
+                and totp.enabled
+            ),
+            "passkey_count": len(passkeys),
+        }
+    )
+
+
+@auth_bp.post("/mfa/totp/enroll")
+@login_required
+@csrf_protected
+def enroll_totp():
+    state = current_app.extensions["marks_auth"]
+
+    if not state.config.mfa_enabled:
+        return error_response(
+            code="MFA_DISABLED",
+            message="MFA is not enabled for this application.",
+            status_code=404,
+        )
+
+    try:
+        enrollment = (
+            state.totp_service.begin_enrollment(
+                current_user
+            )
+        )
+
+    except AuthError as error:
+        return error_response(
+            code=error.code,
+            message=error.message,
+            status_code=error.status_code,
+        )
+
+    state.audit_logger.log(
+        "totp_enrollment_started",
+        auth_id=current_user.auth_id,
+        username=current_user.username,
+        ip_address=request.remote_addr or "unknown",
+    )
+
+    return success_response(
+        data={
+            "secret": enrollment["secret"],
+            "provisioning_uri": (
+                enrollment["provisioning_uri"]
+            ),
+        },
+        message="TOTP enrollment started.",
+    )
+
+
+@auth_bp.post("/mfa/totp/verify-enrollment")
+@login_required
+@csrf_protected
+def verify_totp_enrollment():
+    state = current_app.extensions["marks_auth"]
+
+    if not state.config.mfa_enabled:
+        return error_response(
+            code="MFA_DISABLED",
+            message="MFA is not enabled for this application.",
+            status_code=404,
+        )
+
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return error_response(
+            code="INVALID_REQUEST",
+            message="Request body must contain a JSON object.",
+            status_code=400,
+        )
+
+    code = data.get("code")
+
+    try:
+        state.totp_service.verify_enrollment(
+            current_user,
+            code,
+        )
+
+    except AuthError as error:
+        return error_response(
+            code=error.code,
+            message=error.message,
+            status_code=error.status_code,
+        )
+
+    state.audit_logger.log(
+        "totp_enabled",
+        auth_id=current_user.auth_id,
+        username=current_user.username,
+        ip_address=request.remote_addr or "unknown",
+    )
+
+    return success_response(
+        message="TOTP enabled successfully."
+    )
+
+
+@auth_bp.post("/mfa/totp/disable")
+@login_required
+@csrf_protected
+def disable_totp():
+    state = current_app.extensions["marks_auth"]
+
+    if not state.config.mfa_enabled:
+        return error_response(
+            code="MFA_DISABLED",
+            message="MFA is not enabled for this application.",
+            status_code=404,
+        )
+
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return error_response(
+            code="INVALID_REQUEST",
+            message="Request body must contain a JSON object.",
+            status_code=400,
+        )
+
+    current_password = data.get(
+        "current_password"
+    )
+
+    try:
+        state.totp_service.disable_totp(
+            user=current_user,
+            current_password=current_password,
+            password_service=state.password_service,
+        )
+
+    except AuthError as error:
+        return error_response(
+            code=error.code,
+            message=error.message,
+            status_code=error.status_code,
+        )
+
+    state.audit_logger.log(
+        "totp_disabled",
+        auth_id=current_user.auth_id,
+        username=current_user.username,
+        ip_address=request.remote_addr or "unknown",
+    )
+
+    return success_response(
+        message="TOTP disabled successfully."
+    )
+
+
+@auth_bp.post(
+    "/mfa/recovery-codes/generate"
+)
+@login_required
+@csrf_protected
+def generate_recovery_codes():
+    state = current_app.extensions[
+        "marks_auth"
+    ]
+
+    if not state.config.mfa_enabled:
+        return error_response(
+            code="MFA_DISABLED",
+            message=(
+                "MFA is not enabled for "
+                "this application."
+            ),
+            status_code=404,
+        )
+
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return error_response(
+            code="INVALID_REQUEST",
+            message=(
+                "Request body must contain "
+                "a JSON object."
+            ),
+            status_code=400,
+        )
+
+    current_password = data.get(
+        "current_password"
+    )
+
+    try:
+        codes = (
+            state.recovery_code_manager
+            .generate_codes(
+                user=current_user,
+                current_password=(
+                    current_password
+                ),
+            )
+        )
+
+    except AuthError as error:
+        return error_response(
+            code=error.code,
+            message=error.message,
+            status_code=error.status_code,
+        )
+
+    state.audit_logger.log(
+        "recovery_codes_generated",
+        auth_id=current_user.auth_id,
+        username=current_user.username,
+        ip_address=(
+            request.remote_addr
+            or "unknown"
+        ),
+    )
+
+    return success_response(
+        data={
+            "codes": codes,
+        },
+        message=(
+            "Recovery codes generated "
+            "successfully."
+        ),
+    )
+
+
+@auth_bp.get(
+    "/mfa/recovery-codes/status"
+)
+@login_required
+def recovery_code_status():
+    state = current_app.extensions[
+        "marks_auth"
+    ]
+
+    if not state.config.mfa_enabled:
+        return error_response(
+            code="MFA_DISABLED",
+            message=(
+                "MFA is not enabled for "
+                "this application."
+            ),
+            status_code=404,
+        )
+
+    remaining = (
+        state.recovery_code_manager
+        .count_unused_codes(
+            current_user
+        )
+    )
+
+    return success_response(
+        data={
+            "remaining": remaining,
+        }
+    )
+
+
 @auth_bp.get("/config")
 def auth_config():
     state = current_app.extensions["marks_auth"]
@@ -365,4 +709,237 @@ def auth_config():
                 state.config.captcha_site_key
             ),
         }
+    )
+
+@auth_bp.post("/mfa/challenge/totp")
+@csrf_protected
+@throttle(
+    action="mfa-challenge",
+    identities=("ip",),
+    limit_config="mfa_challenge_attempt_limit",
+    window_config="mfa_challenge_attempt_window",
+)
+def complete_totp_challenge():
+    state = current_app.extensions[
+        "marks_auth"
+    ]
+
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return error_response(
+            code="INVALID_REQUEST",
+            message=(
+                "Request body must contain "
+                "a JSON object."
+            ),
+            status_code=400,
+        )
+
+    challenge_id = data.get(
+        "challenge_id"
+    )
+
+    code = data.get("code")
+
+    try:
+        challenge = (
+            state.mfa_challenge_service.get(
+                challenge_id
+            )
+        )
+
+    except AuthError as error:
+        return error_response(
+            code=error.code,
+            message=error.message,
+            status_code=error.status_code,
+        )
+
+    user = state.user_store.find_by_auth_id(
+        challenge["auth_id"]
+    )
+
+    if user is None:
+        state.mfa_challenge_service.clear()
+
+        return error_response(
+            code="INVALID_MFA_CHALLENGE",
+            message=(
+                "MFA challenge is invalid "
+                "or expired."
+            ),
+            status_code=401,
+        )
+
+    if not state.totp_service.verify_code(
+        user,
+        code,
+    ):
+        state.audit_logger.log(
+            "mfa_totp_failure",
+            auth_id=user.auth_id,
+            username=user.username,
+            ip_address=(
+                request.remote_addr
+                or "unknown"
+            ),
+        )
+
+        return error_response(
+            code="INVALID_TOTP_CODE",
+            message=(
+                "Invalid authentication code."
+            ),
+            status_code=401,
+        )
+
+    remember = challenge["remember"]
+
+    state.mfa_challenge_service.clear()
+
+    login_user(
+        user,
+        remember=remember,
+    )
+
+    state.audit_logger.log(
+        "login_success",
+        auth_id=user.auth_id,
+        username=user.username,
+        ip_address=(
+            request.remote_addr
+            or "unknown"
+        ),
+        remember=remember,
+        mfa_method="totp",
+    )
+
+    return success_response(
+        data={
+            "auth_id": user.auth_id,
+            "username": user.username,
+            "email": user.email,
+        },
+        message="Login successful.",
+    )
+
+@auth_bp.post(
+    "/mfa/challenge/recovery-code"
+)
+@csrf_protected
+@throttle(
+    action="mfa-challenge",
+    identities=("ip",),
+    limit_config="mfa_challenge_attempt_limit",
+    window_config="mfa_challenge_attempt_window",
+)
+def complete_recovery_code_challenge():
+    state = current_app.extensions[
+        "marks_auth"
+    ]
+
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return error_response(
+            code="INVALID_REQUEST",
+            message=(
+                "Request body must contain "
+                "a JSON object."
+            ),
+            status_code=400,
+        )
+
+    challenge_id = data.get(
+        "challenge_id"
+    )
+
+    recovery_code = data.get(
+        "recovery_code"
+    )
+
+    try:
+        challenge = (
+            state.mfa_challenge_service.get(
+                challenge_id
+            )
+        )
+
+    except AuthError as error:
+        return error_response(
+            code=error.code,
+            message=error.message,
+            status_code=error.status_code,
+        )
+
+    user = state.user_store.find_by_auth_id(
+        challenge["auth_id"]
+    )
+
+    if user is None:
+        state.mfa_challenge_service.clear()
+
+        return error_response(
+            code="INVALID_MFA_CHALLENGE",
+            message=(
+                "MFA challenge is invalid "
+                "or expired."
+            ),
+            status_code=401,
+        )
+
+    if not (
+        state.recovery_code_manager
+        .verify_and_consume(
+            user,
+            recovery_code,
+        )
+    ):
+        state.audit_logger.log(
+            "mfa_recovery_failure",
+            auth_id=user.auth_id,
+            username=user.username,
+            ip_address=(
+                request.remote_addr
+                or "unknown"
+            ),
+        )
+
+        return error_response(
+            code="INVALID_RECOVERY_CODE",
+            message=(
+                "Invalid recovery code."
+            ),
+            status_code=401,
+        )
+
+    remember = challenge["remember"]
+
+    state.mfa_challenge_service.clear()
+
+    login_user(
+        user,
+        remember=remember,
+    )
+
+    state.audit_logger.log(
+        "login_success",
+        auth_id=user.auth_id,
+        username=user.username,
+        ip_address=(
+            request.remote_addr
+            or "unknown"
+        ),
+        remember=remember,
+        mfa_method="recovery_code",
+    )
+
+    return success_response(
+        data={
+            "auth_id": user.auth_id,
+            "username": user.username,
+            "email": user.email,
+        },
+        message="Login successful.",
     )

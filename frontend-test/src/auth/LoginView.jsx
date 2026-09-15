@@ -5,7 +5,8 @@ import CaptchaChallenge from "./CaptchaChallenge";
 
 export default function LoginView({
     onRegister,
-    onForgotPassword
+    onForgotPassword,
+    onMFARequired
 }) {
     const {
         client,
@@ -58,15 +59,37 @@ export default function LoginView({
                 }
 
                 setError(response.error);
+
+                return;
+            }
+
+            if (
+                response.data?.mfa_required
+                && response.data?.challenge_id
+            ) {
+                onMFARequired({
+                    challengeId:
+                        response.data.challenge_id,
+
+                    methods:
+                        response.data.methods || []
+                });
+
                 return;
             }
 
             handleLogin(response.data);
 
         } catch (requestError) {
+            console.error(
+                "Login request failed:",
+                requestError
+            );
+
             setError({
                 code: "NETWORK_ERROR",
-                message: "Unable to contact the authentication server."
+                message:
+                    "Unable to contact the authentication server."
             });
 
         } finally {
@@ -103,16 +126,20 @@ export default function LoginView({
                     type="checkbox"
                     checked={remember}
                     onChange={(event) =>
-                        setRemember(event.target.checked)
+                        setRemember(
+                            event.target.checked
+                        )
                     }
                 />
 
                 Remember me
             </label>
-            
+
             {captchaRequired && (
                 <CaptchaChallenge
-                    siteKey={config?.captcha_site_key}
+                    siteKey={
+                        config?.captcha_site_key
+                    }
 
                     onSuccess={(token) => {
                         setCaptchaToken(token);
@@ -144,15 +171,19 @@ export default function LoginView({
             <button
                 type="submit"
                 disabled={
-                    !ready ||
-                    loading ||
-                    (
-                        captchaRequired &&
-                        !captchaToken
+                    !ready
+                    || loading
+                    || (
+                        captchaRequired
+                        && !captchaToken
                     )
                 }
             >
-                {loading ? "Signing in..." : "Sign In"}
+                {
+                    loading
+                        ? "Signing in..."
+                        : "Sign In"
+                }
             </button>
 
             <div className="marks-auth-actions">

@@ -7,17 +7,24 @@ from marks_toolkit.auth import AuthKit
 from marks_toolkit.auth.captcha import TestCaptchaProvider
 from marks_toolkit.auth.user_contract import AuthUser
 from marks_toolkit.auth.user_store import UserStore
+from cryptography.fernet import Fernet
+
+from marks_toolkit.auth.memory_mfa_store import (
+    MemoryMFAStore
+)
 
 
 class TestUser(AuthUser):
     def __init__(
         self,
+        user_id,
         auth_id,
         email,
         username,
         password_hash,
-        is_active=True
+        is_active=True,
     ):
+        self.id = user_id
         self.auth_id = auth_id
         self.email = email
         self.username = username
@@ -32,6 +39,7 @@ class TestUser(AuthUser):
 class TestUserStore(UserStore):
     def __init__(self):
         self.users = []
+        self.next_id = 1
 
     def find_by_identity(self, identity_key):
         for user in self.users:
@@ -61,20 +69,21 @@ class TestUserStore(UserStore):
             user.username.casefold() == username_key
             for user in self.users
         )
-
     def create_user(
         self,
         email,
         username,
-        password_hash
+        password_hash,
     ):
         user = TestUser(
+            user_id=self.next_id,
             auth_id=secrets.token_urlsafe(32),
             email=email,
             username=username,
-            password_hash=password_hash
+            password_hash=password_hash,
         )
 
+        self.next_id += 1
         self.users.append(user)
 
         return user
@@ -142,13 +151,31 @@ def app():
 
     auth_kit = AuthKit()
 
+    app.config["MARKS_AUTH_MFA_ENABLED"] = True
+
+    app.config[
+        "MARKS_AUTH_MFA_ENCRYPTION_KEY"
+    ] = Fernet.generate_key().decode("utf-8")
+
+    app.config[
+        "MARKS_AUTH_RECOVERY_CODE_KEY"
+    ] = "pytest-recovery-code-secret"
+
+    app.config[
+        "MARKS_AUTH_TOTP_ISSUER"
+    ] = "MARKS Auth Test"
+
+    mfa_store = MemoryMFAStore()
+
     auth_kit.init_app(
         app,
         user_store=user_store,
-        captcha_provider=TestCaptchaProvider()
+        captcha_provider=TestCaptchaProvider(),
+        mfa_store=mfa_store,
     )
 
     app.test_user_store = user_store
+    app.test_mfa_store = mfa_store
 
     return app
 

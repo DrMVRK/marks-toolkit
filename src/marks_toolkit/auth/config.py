@@ -117,3 +117,36 @@ class AuthConfig:
             "MARKS_AUTH_PROXY_FIX_X_PROTO",
             1
         )
+
+        self.mfa_enabled = app.config.get(
+            "MARKS_AUTH_MFA_ENABLED",
+            False,
+        )
+
+        self.mfa_encryption_key = app.config.get(
+            "MARKS_AUTH_MFA_ENCRYPTION_KEY"
+        )
+
+        self.recovery_code_key = app.config.get(
+            "MARKS_AUTH_RECOVERY_CODE_KEY"
+        )
+
+        self.totp_issuer = app.config.get(
+            "MARKS_AUTH_TOTP_ISSUER",
+            "MARKS Auth"
+        )
+
+        self.mfa_challenge_ttl = app.config.get(
+            "MARKS_AUTH_MFA_CHALLENGE_TTL",
+            300,
+        )
+
+        self.mfa_challenge_attempt_limit = app.config.get(
+            "MARKS_AUTH_MFA_CHALLENGE_ATTEMPT_LIMIT",
+            5,
+        )
+
+        self.mfa_challenge_attempt_window = app.config.get(
+            "MARKS_AUTH_MFA_CHALLENGE_ATTEMPT_WINDOW",
+            300,
+        )

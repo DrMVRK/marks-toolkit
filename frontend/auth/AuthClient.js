@@ -111,4 +111,30 @@ export default class AuthClient {
             }
         );
     }
+
+    completeTotpChallenge({
+        challengeId,
+        code,
+    }) {
+        return this.post(
+            "/mfa/challenge/totp",
+            {
+                challenge_id: challengeId,
+                code,
+            }
+        );
+    }
+
+    completeRecoveryCodeChallenge({
+        challengeId,
+        recoveryCode,
+    }) {
+        return this.post(
+            "/mfa/challenge/recovery-code",
+            {
+                challenge_id: challengeId,
+                recovery_code: recoveryCode,
+            }
+        );
+    }
 }

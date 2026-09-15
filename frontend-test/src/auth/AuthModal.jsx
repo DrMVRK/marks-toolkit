@@ -5,6 +5,7 @@ import LoginView from "./LoginView";
 import RegisterView from "./RegisterView";
 import ForgotPasswordView from "./ForgotPasswordView";
 import ResetPasswordView from "./ResetPasswordView";
+import MFAChallengeView from "./MFAChallengeView";
 
 
 export default function AuthModal({
@@ -14,28 +15,58 @@ export default function AuthModal({
     resetToken = null
 }) {
     const [view, setView] = useState(initialView);
-    const { authenticated } = useAuth();
+
+    const [mfaChallenge, setMfaChallenge] = useState(
+        null
+    );
+
+    const {
+        authenticated,
+        handleLogin
+    } = useAuth();
+
 
     useEffect(() => {
         if (open) {
             setView(initialView);
+            setMfaChallenge(null);
         }
     }, [open, initialView]);
 
+
     useEffect(() => {
-        if (authenticated && open && view === "login") {
+        if (
+            authenticated
+            && open
+            && (
+                view === "login"
+                || view === "mfa"
+            )
+        ) {
             onClose();
         }
-    }, [authenticated, open, view, onClose]);
+    }, [
+        authenticated,
+        open,
+        view,
+        onClose
+    ]);
+
 
     useEffect(() => {
         function handleKeyDown(event) {
-            if (event.key === "Escape" && open) {
+            if (
+                event.key === "Escape"
+                && open
+            ) {
                 onClose();
             }
         }
 
-        document.addEventListener("keydown", handleKeyDown);
+        document.addEventListener(
+            "keydown",
+            handleKeyDown
+        );
 
         return () => {
             document.removeEventListener(
@@ -45,53 +76,111 @@ export default function AuthModal({
         };
     }, [open, onClose]);
 
+
     if (!open) {
         return null;
     }
 
+
     function handleOverlayClick(event) {
-        if (event.target === event.currentTarget) {
+        if (
+            event.target
+            === event.currentTarget
+        ) {
             onClose();
         }
     }
 
+
     let content = null;
+
 
     if (view === "login") {
         content = (
             <LoginView
-                onRegister={() => setView("register")}
+                onRegister={() =>
+                    setView("register")
+                }
+
                 onForgotPassword={() =>
                     setView("forgot-password")
+                }
+
+                onMFARequired={(challenge) => {
+                    setMfaChallenge(
+                        challenge
+                    );
+
+                    setView("mfa");
+                }}
+            />
+        );
+    }
+
+
+    if (
+        view === "mfa"
+        && mfaChallenge
+    ) {
+        content = (
+            <MFAChallengeView
+                challengeId={
+                    mfaChallenge.challengeId
+                }
+
+                methods={
+                    mfaChallenge.methods
+                }
+
+                onSuccess={(userData) => {
+                    handleLogin(userData);
+
+                    setMfaChallenge(null);
+                }}
+
+                onCancel={() => {
+                    setMfaChallenge(null);
+                    setView("login");
+                }}
+            />
+        );
+    }
+
+
+    if (view === "register") {
+        content = (
+            <RegisterView
+                onLogin={() =>
+                    setView("login")
                 }
             />
         );
     }
 
-    if (view === "register") {
-        content = (
-            <RegisterView
-                onLogin={() => setView("login")}
-            />
-        );
-    }
 
     if (view === "forgot-password") {
         content = (
             <ForgotPasswordView
-                onLogin={() => setView("login")}
+                onLogin={() =>
+                    setView("login")
+                }
             />
         );
     }
+
 
     if (view === "reset-password") {
         content = (
             <ResetPasswordView
                 resetToken={resetToken}
-                onLogin={() => setView("login")}
+
+                onLogin={() =>
+                    setView("login")
+                }
             />
         );
     }
+
 
     return (
         <div
@@ -107,7 +196,9 @@ export default function AuthModal({
                     type="button"
                     className="marks-auth-close"
                     onClick={onClose}
-                    aria-label="Close authentication dialog"
+                    aria-label={
+                        "Close authentication dialog"
+                    }
                 >
                     ×
                 </button>
