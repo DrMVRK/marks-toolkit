@@ -16,6 +16,7 @@ class AuthState:
             throttle_service,
             security_store,
             audit_logger,
+            password_change_service,
     ):
         
         self.config = config
@@ -33,3 +34,4 @@ class AuthState:
         self.throttle_service = throttle_service
         self.security_store = security_store
         self.audit_logger = audit_logger
+        self.password_change_service = password_change_service

@@ -306,6 +306,55 @@ def reset_password():
     )
 
 
+@auth_bp.post("/change-password")
+@login_required
+@csrf_protected
+def change_password():
+    state = current_app.extensions["marks_auth"]
+
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return error_response(
+            code="INVALID_REQUEST",
+            message="Request body must contain a JSON object.",
+            status_code=400,
+        )
+
+    current_password = data.get("current_password")
+    new_password = data.get("new_password")
+
+    try:
+        state.password_change_service.change_password(
+            user=current_user,
+            current_password=current_password,
+            new_password=new_password,
+        )
+
+    except AuthError as error:
+        return error_response(
+            code=error.code,
+            message=error.message,
+            status_code=error.status_code,
+        )
+
+    state.audit_logger.log(
+        "password_changed",
+        auth_id=current_user.auth_id,
+        username=current_user.username,
+        ip_address=request.remote_addr or "unknown",
+    )
+
+    logout_user()
+
+    return success_response(
+        message=(
+            "Password changed successfully. "
+            "Please log in again."
+        )
+    )
+
+
 @auth_bp.get("/config")
 def auth_config():
     state = current_app.extensions["marks_auth"]

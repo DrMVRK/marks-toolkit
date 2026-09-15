@@ -98,4 +98,17 @@ export default class AuthClient {
             password
         });
     }
+
+    changePassword({
+        currentPassword,
+        newPassword
+    }) {
+        return this.post(
+            "/change-password",
+            {
+                current_password: currentPassword,
+                new_password: newPassword
+            }
+        );
+    }
 }

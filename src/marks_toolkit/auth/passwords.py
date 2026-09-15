@@ -1,5 +1,6 @@
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
+from .exceptions import WeakPasswordError
 
 
 class PasswordService:
@@ -10,13 +11,21 @@ class PasswordService:
 
     def validate_password(self, password):
         if not isinstance(password, str):
-            raise ValueError("Password must be a string.")
+            raise WeakPasswordError(
+                "Password must be a string."
+            )
 
         if len(password) < self.min_length:
-            raise ValueError(f"Password must be at least {self.min_length} characters long.")
+            raise WeakPasswordError(
+                f"Password must be at least "
+                f"{self.min_length} characters long."
+            )
 
         if len(password) > self.max_length:
-            raise ValueError(f"Password must be at most {self.max_length} characters long.")
+            raise WeakPasswordError(
+                f"Password must be no more than "
+                f"{self.max_length} characters long."
+            )
         
         return True
 

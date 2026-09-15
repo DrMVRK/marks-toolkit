@@ -17,6 +17,7 @@ from .security_store import (
     RedisSecurityStore
 )
 from .audit import StandardAuditLogger
+from .password_change import PasswordChangeService
 
 from flask_login import LoginManager
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -134,6 +135,12 @@ class AuthKit:
             password_service=password_service,
             reset_token_service=reset_token_service,
             mailer=mailer
+            
+        )
+
+        password_change_service = PasswordChangeService(
+            user_store=user_store,
+            password_service=password_service,
         )
 
         if config.security_store_backend == "memory":
@@ -185,6 +192,7 @@ class AuthKit:
             throttle_service=throttle_service,
             security_store=security_store,
             audit_logger=audit_logger,
+            password_change_service=password_change_service,
         )
 
         app.extensions["marks_auth"] = state
