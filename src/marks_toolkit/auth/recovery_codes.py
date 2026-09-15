@@ -4,86 +4,123 @@ import secrets
 
 
 class RecoveryCodeService:
-
     def __init__(
         self,
-        hashing_key,
+        key,
         code_count=10,
     ):
-        if not hashing_key:
+        if not key:
             raise ValueError(
-                "A recovery-code hashing key is required."
+                "Recovery-code key is required."
             )
 
-        if isinstance(hashing_key, str):
-            hashing_key = hashing_key.encode(
+        if isinstance(key, str):
+            key = key.encode(
                 "utf-8"
             )
 
-        self.hashing_key = hashing_key
+        self.key = key
         self.code_count = code_count
 
-    def generate_code(self):
-        raw = secrets.token_hex(8).upper()
-
-        return (
-            f"{raw[:4]}-"
-            f"{raw[4:8]}-"
-            f"{raw[8:12]}-"
-            f"{raw[12:16]}"
-        )
-
-    def generate_codes(self):
-        return [
-            self.generate_code()
-            for _ in range(self.code_count)
-        ]
-
-    def normalize_code(self, code):
-        if not isinstance(code, str):
+    def normalize_code(
+        self,
+        code,
+    ):
+        if not isinstance(
+            code,
+            str,
+        ):
             raise ValueError(
                 "Recovery code must be a string."
             )
 
-        return (
-            code
-            .strip()
+        normalized = (
+            code.strip()
             .replace("-", "")
+            .replace(" ", "")
             .upper()
         )
-
-    def hash_code(self, code):
-        normalized = self.normalize_code(code)
 
         if not normalized:
             raise ValueError(
                 "Recovery code is required."
             )
 
-        digest = hmac.new(
-            self.hashing_key,
-            normalized.encode("utf-8"),
-            hashlib.sha256,
+        return normalized
+
+    def generate_code(self):
+        raw = secrets.token_hex(
+            8
+        ).upper()
+
+        return "-".join(
+            raw[index:index + 4]
+            for index in range(
+                0,
+                len(raw),
+                4,
+            )
         )
 
-        return digest.hexdigest()
+    def generate_codes(
+        self,
+        count=None,
+    ):
+        if count is None:
+            count = self.code_count
 
-    def hash_codes(self, codes):
+        return [
+            self.generate_code()
+            for _ in range(count)
+        ]
+
+    def hash_code(
+        self,
+        code,
+    ):
+        normalized = (
+            self.normalize_code(
+                code
+            )
+        )
+
+        return hmac.new(
+            self.key,
+            normalized.encode(
+                "utf-8"
+            ),
+            hashlib.sha256,
+        ).hexdigest()
+
+    def hash_codes(
+        self,
+        codes,
+    ):
         return [
             self.hash_code(code)
             for code in codes
         ]
 
-    def verify_code(
+    def verify(
         self,
-        submitted_code,
+        code,
         stored_hash,
     ):
-        submitted_hash = self.hash_code(
-            submitted_code
-        )
+        try:
+            candidate_hash = (
+                self.hash_code(code)
+            )
+
+        except ValueError:
+            return False
+
+        if not isinstance(
+            stored_hash,
+            str,
+        ):
+            return False
 
         return hmac.compare_digest(
-            submitted_hash,
+            candidate_hash,
             stored_hash,
         )

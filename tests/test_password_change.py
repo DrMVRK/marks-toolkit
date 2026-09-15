@@ -316,3 +316,56 @@ def test_password_change_is_audited(
         "auth_event=password_changed"
         in caplog.text
     )
+
+def test_password_change_is_rate_limited(
+    client,
+):
+    register_user(client)
+    login_user(client)
+
+    csrf_token = get_csrf(
+        client
+    )
+
+    for _ in range(5):
+        response = client.post(
+            "/auth/change-password",
+            json={
+                "current_password":
+                    "WrongPassword123!",
+                "new_password":
+                    "AnotherTestingPassword123!",
+            },
+            headers={
+                "X-CSRF-Token":
+                    csrf_token
+            },
+        )
+
+        assert response.status_code in (
+            400,
+            401,
+        )
+
+    response = client.post(
+        "/auth/change-password",
+        json={
+            "current_password":
+                "WrongPassword123!",
+            "new_password":
+                "AnotherTestingPassword123!",
+        },
+        headers={
+            "X-CSRF-Token":
+                csrf_token
+        },
+    )
+
+    data = response.get_json()
+
+    assert response.status_code == 429
+
+    assert (
+        data["error"]["code"]
+        == "RATE_LIMITED"
+    )

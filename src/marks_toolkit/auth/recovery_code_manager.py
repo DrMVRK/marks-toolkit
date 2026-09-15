@@ -1,8 +1,20 @@
-from .mfa import InvalidMFAPasswordError
+from .exceptions import AuthError
+
+
+class RecoveryCodeAuthenticationError(
+    AuthError
+):
+    code = "INVALID_MFA_PASSWORD"
+    status_code = 400
+
+    def __init__(
+        self,
+        message="Current password is incorrect.",
+    ):
+        super().__init__(message)
 
 
 class RecoveryCodeManager:
-
     def __init__(
         self,
         mfa_store,
@@ -10,9 +22,11 @@ class RecoveryCodeManager:
         password_service,
     ):
         self.mfa_store = mfa_store
+
         self.recovery_code_service = (
             recovery_code_service
         )
+
         self.password_service = (
             password_service
         )
@@ -22,12 +36,30 @@ class RecoveryCodeManager:
         user,
         current_password,
     ):
-        if not self.password_service.verify_password(
-            user.password_hash,
+        if not isinstance(
             current_password,
+            str,
         ):
-            raise InvalidMFAPasswordError(
-                "Current password is incorrect."
+            raise (
+                RecoveryCodeAuthenticationError()
+            )
+
+        if not current_password:
+            raise (
+                RecoveryCodeAuthenticationError()
+            )
+
+        valid_password = (
+            self.password_service
+            .verify_password(
+                user.password_hash,
+                current_password,
+            )
+        )
+
+        if not valid_password:
+            raise (
+                RecoveryCodeAuthenticationError()
             )
 
         codes = (
@@ -37,12 +69,14 @@ class RecoveryCodeManager:
 
         code_hashes = (
             self.recovery_code_service
-            .hash_codes(codes)
+            .hash_codes(
+                codes
+            )
         )
 
         self.mfa_store.replace_recovery_codes(
-            user_id=user.id,
-            code_hashes=code_hashes,
+            user.id,
+            code_hashes,
         )
 
         return codes
@@ -51,39 +85,44 @@ class RecoveryCodeManager:
         self,
         user,
     ):
-        codes = (
+        records = (
             self.mfa_store
             .list_unused_recovery_codes(
                 user.id
             )
         )
 
-        return len(codes)
+        return len(records)
 
     def verify_and_consume(
         self,
         user,
-        submitted_code,
+        recovery_code,
     ):
-        unused_codes = (
-            self.mfa_store
-            .list_unused_recovery_codes(
-                user.id
-            )
-        )
+        if not isinstance(
+            recovery_code,
+            str,
+        ):
+            return False
 
-        for recovery_code in unused_codes:
-            if (
+        if not recovery_code.strip():
+            return False
+
+        try:
+            code_hash = (
                 self.recovery_code_service
-                .verify_code(
-                    submitted_code,
-                    recovery_code.code_hash,
-                )
-            ):
-                self.mfa_store.mark_recovery_code_used(
+                .hash_code(
                     recovery_code
                 )
+            )
 
-                return True
+        except ValueError:
+            return False
 
-        return False
+        return (
+            self.mfa_store
+            .consume_recovery_code(
+                user.id,
+                code_hash,
+            )
+        )

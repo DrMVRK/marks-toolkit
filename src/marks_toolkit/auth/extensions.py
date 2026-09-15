@@ -25,6 +25,9 @@ from .recovery_code_manager import RecoveryCodeManager
 from .mfa_challenge import (
     MFAChallengeService
 )
+from .mfa_challenge_store import (
+    MemoryMFAChallengeStore,
+)
 
 from flask_login import LoginManager
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -97,12 +100,14 @@ class AuthKit:
             max_length=config.password_max_length,
         )
 
-        mfa_challenge_service = (
-            MFAChallengeService(
-                ttl_seconds=(
-                    config.mfa_challenge_ttl
-                )
-            )
+        mfa_challenge_store = (
+            MemoryMFAChallengeStore()
+        )
+
+        mfa_challenge_service = MFAChallengeService(
+            store=mfa_challenge_store,
+            ttl_seconds=
+                config.mfa_challenge_ttl,
         )
 
         # -------------------------------------------------

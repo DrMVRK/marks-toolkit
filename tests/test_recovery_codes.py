@@ -305,3 +305,77 @@ def test_regenerating_codes_invalidates_old_codes(
         )
         is False
     )
+
+def test_recovery_code_atomic_consume(
+    app,
+):
+    state = app.extensions[
+        "marks_auth"
+    ]
+
+    store = state.mfa_store
+
+    user_id = 123
+    code_hash = "test-hash"
+
+    store.replace_recovery_codes(
+        user_id,
+        [code_hash],
+    )
+
+    first = store.consume_recovery_code(
+        user_id,
+        code_hash,
+    )
+
+    second = store.consume_recovery_code(
+        user_id,
+        code_hash,
+    )
+
+    assert first is True
+    assert second is False
+
+def test_recovery_code_generation_is_rate_limited(
+    client,
+):
+    register_user(client)
+    login_user(client)
+
+    csrf_token = get_csrf(client)
+
+    for _ in range(5):
+        response = client.post(
+            "/auth/mfa/recovery-codes/generate",
+            json={
+                "current_password":
+                    "WrongPassword123!",
+            },
+            headers={
+                "X-CSRF-Token":
+                    csrf_token
+            },
+        )
+
+        assert response.status_code == 400
+
+    response = client.post(
+        "/auth/mfa/recovery-codes/generate",
+        json={
+            "current_password":
+                "WrongPassword123!",
+        },
+        headers={
+            "X-CSRF-Token":
+                csrf_token
+        },
+    )
+
+    data = response.get_json()
+
+    assert response.status_code == 429
+
+    assert (
+        data["error"]["code"]
+        == "RATE_LIMITED"
+    )

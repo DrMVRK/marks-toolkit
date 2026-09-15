@@ -4,6 +4,7 @@ import secrets
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     DateTime,
     ForeignKey,
@@ -94,6 +95,11 @@ class AuthTotpModel(AuthBase):
     encrypted_secret: Mapped[bytes] = mapped_column(
         LargeBinary,
         nullable=False,
+    )
+
+    last_used_step = mapped_column(
+        BigInteger,
+        nullable=True,
     )
 
     enabled: Mapped[bool] = mapped_column(

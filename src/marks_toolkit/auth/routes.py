@@ -49,6 +49,12 @@ def me():
 
 @auth_bp.post("/register")
 @csrf_protected
+@throttle(
+    action="registration",
+    identities=("ip",),
+    limit_config="registration_limit",
+    window_config="registration_window",
+)
 def register():
     state = current_app.extensions["marks_auth"]
 
@@ -361,6 +367,12 @@ def reset_password():
 @auth_bp.post("/change-password")
 @login_required
 @csrf_protected
+@throttle(
+    action="password-change",
+    identities=("ip",),
+    limit_config="password_change_limit",
+    window_config="password_change_window",
+)
 def change_password():
     state = current_app.extensions["marks_auth"]
 
@@ -493,6 +505,12 @@ def enroll_totp():
 @auth_bp.post("/mfa/totp/verify-enrollment")
 @login_required
 @csrf_protected
+@throttle(
+    action="mfa-enrollment-verify",
+    identities=("ip",),
+    limit_config="mfa_enrollment_verify_limit",
+    window_config="mfa_enrollment_verify_window",
+)
 def verify_totp_enrollment():
     state = current_app.extensions["marks_auth"]
 
@@ -542,6 +560,12 @@ def verify_totp_enrollment():
 @auth_bp.post("/mfa/totp/disable")
 @login_required
 @csrf_protected
+@throttle(
+    action="mfa-disable",
+    identities=("ip",),
+    limit_config="mfa_disable_limit",
+    window_config="mfa_disable_window",
+)
 def disable_totp():
     state = current_app.extensions["marks_auth"]
 
@@ -591,11 +615,15 @@ def disable_totp():
     )
 
 
-@auth_bp.post(
-    "/mfa/recovery-codes/generate"
-)
+@auth_bp.post("/mfa/recovery-codes/generate")
 @login_required
 @csrf_protected
+@throttle(
+    action="recovery-code-generation",
+    identities=("ip",),
+    limit_config="recovery_code_generation_limit",
+    window_config="recovery_code_generation_window",
+)
 def generate_recovery_codes():
     state = current_app.extensions[
         "marks_auth"
@@ -794,9 +822,21 @@ def complete_totp_challenge():
             status_code=401,
         )
 
-    remember = challenge["remember"]
+    try:
+        consumed_challenge = (
+            state.mfa_challenge_service.consume(
+                challenge_id
+            )
+        )
 
-    state.mfa_challenge_service.clear()
+    except AuthError as error:
+        return error_response(
+            code=error.code,
+            message=error.message,
+            status_code=error.status_code,
+        )
+
+    remember = consumed_challenge["remember"]
 
     login_user(
         user,
@@ -914,9 +954,21 @@ def complete_recovery_code_challenge():
             status_code=401,
         )
 
-    remember = challenge["remember"]
+    try:
+        consumed_challenge = (
+            state.mfa_challenge_service.consume(
+                challenge_id
+            )
+        )
 
-    state.mfa_challenge_service.clear()
+    except AuthError as error:
+        return error_response(
+            code=error.code,
+            message=error.message,
+            status_code=error.status_code,
+        )
+
+    remember = consumed_challenge["remember"]
 
     login_user(
         user,

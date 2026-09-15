@@ -131,3 +131,54 @@ def test_invalid_email_rejected(client):
 
     assert response.status_code == 400
     assert data["ok"] is False
+
+def test_registration_is_rate_limited(
+    client,
+):
+    csrf_token = get_csrf(
+        client
+    )
+
+    for index in range(5):
+        response = client.post(
+            "/auth/register",
+            json={
+                "email":
+                    f"user{index}@example.com",
+                "username":
+                    f"user{index}",
+                "password":
+                    "TestingPassword123!",
+            },
+            headers={
+                "X-CSRF-Token":
+                    csrf_token
+            },
+        )
+
+        assert response.status_code == 201
+
+    response = client.post(
+        "/auth/register",
+        json={
+            "email":
+                "user6@example.com",
+            "username":
+                "user6",
+            "password":
+                "TestingPassword123!",
+        },
+        headers={
+            "X-CSRF-Token":
+                csrf_token
+        },
+    )
+
+    data = response.get_json()
+
+    assert response.status_code == 429
+
+    assert (
+        data["error"]["code"]
+        == "RATE_LIMITED"
+    )

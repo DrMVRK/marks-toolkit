@@ -27,6 +27,23 @@ class MFAStore(ABC):
     def delete_totp(self, user_id):
         pass
 
+    @abstractmethod
+    def claim_totp_step(
+        self,
+        user_id,
+        step,
+    ):
+        """
+        Atomically claim a TOTP timestep for a user.
+
+        Return True only if this timestep is newer than every
+        previously accepted timestep.
+
+        Return False if the timestep has already been used or
+        is older than the last accepted timestep.
+        """
+        raise NotImplementedError
+
     # -------------------------
     # Passkeys
     # -------------------------
@@ -95,6 +112,23 @@ class MFAStore(ABC):
     ):
         pass
 
+    @abstractmethod
+    def consume_recovery_code(
+        self,
+        user_id,
+        code_hash,
+    ):
+        """
+        Atomically consume one unused recovery code.
+
+        Return True only if an unused matching code existed
+        and this call successfully marked it used.
+
+        Return False if the code does not exist or was
+        already consumed by another request.
+        """
+        raise NotImplementedError
+    
     # -------------------------
     # Account MFA status
     # -------------------------

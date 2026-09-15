@@ -1,4 +1,5 @@
 import pyotp
+import time
 
 from .mfa import (
     InvalidMFAPasswordError,
@@ -118,29 +119,63 @@ class TotpService:
         user,
         code,
     ):
-        enrollment = (
-            self.mfa_store.get_totp(
-                user.id
-            )
+        record = self.mfa_store.get_totp(
+            user.id
         )
 
         if (
-            enrollment is None
-            or not enrollment.enabled
+            record is None
+            or not record.enabled
         ):
             return False
 
+        if not isinstance(code, str):
+            return False
+
+        code = code.strip()
+
+        if not code:
+            return False
+
         secret = (
-            self.encryption_service.decrypt(
-                enrollment.encrypted_secret
-            )
+            self.encryption_service
+            .decrypt(record.encrypted_secret)
         )
 
         totp = pyotp.TOTP(secret)
 
-        return totp.verify(
-            str(code),
-            valid_window=1,
+        current_step = (
+            int(time.time())
+            // totp.interval
+        )
+
+        matching_step = None
+
+        for offset in (-1, 0, 1):
+            candidate_step = (
+                current_step
+                + offset
+            )
+
+            candidate_time = (
+                candidate_step
+                * totp.interval
+            )
+
+            if totp.verify(
+                code,
+                for_time=candidate_time,
+                valid_window=0,
+            ):
+                matching_step = candidate_step
+                break
+
+        if matching_step is None:
+            return False
+
+        return self.mfa_store.claim_totp_step(
+            user.id,
+            matching_step,
         )
 
     def disable_totp(

@@ -368,3 +368,99 @@ def test_completed_challenge_cannot_be_reused(
     )
 
     assert second.status_code == 401
+
+def test_totp_code_cannot_be_reused_across_challenges(
+    client,
+):
+    secret = prepare_totp_account(
+        client
+    )
+
+    # First password login creates MFA challenge #1.
+    first_login = login_normal(
+        client
+    )
+
+    assert first_login.status_code == 202
+
+    first_challenge_id = (
+        first_login.get_json()
+        ["data"]["challenge_id"]
+    )
+
+    # Generate ONE TOTP code that we will deliberately
+    # attempt to use twice.
+    code = pyotp.TOTP(
+        secret
+    ).now()
+
+    csrf = get_csrf(
+        client
+    )
+
+    first_mfa = client.post(
+        "/auth/mfa/challenge/totp",
+        json={
+            "challenge_id":
+                first_challenge_id,
+            "code": code,
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert first_mfa.status_code == 200
+
+    # End the authenticated session normally.
+    csrf = get_csrf(
+        client
+    )
+
+    logout_response = client.post(
+        "/auth/logout",
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert logout_response.status_code == 200
+
+    # Password login again creates an entirely NEW
+    # MFA challenge.
+    second_login = login_normal(
+        client
+    )
+
+    assert second_login.status_code == 202
+
+    second_challenge_id = (
+        second_login.get_json()
+        ["data"]["challenge_id"]
+    )
+
+    csrf = get_csrf(
+        client
+    )
+
+    # Replay the exact same authenticator code.
+    replay = client.post(
+        "/auth/mfa/challenge/totp",
+        json={
+            "challenge_id":
+                second_challenge_id,
+            "code": code,
+        },
+        headers={
+            "X-CSRF-Token": csrf
+        },
+    )
+
+    assert replay.status_code == 401
+
+    body = replay.get_json()
+
+    assert (
+        body["error"]["code"]
+        == "INVALID_TOTP_CODE"
+    )

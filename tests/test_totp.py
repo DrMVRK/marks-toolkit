@@ -301,3 +301,56 @@ def test_cannot_begin_second_totp_enrollment_when_enabled(
         data["error"]["code"]
         == "TOTP_ALREADY_ENABLED"
     )
+
+def test_totp_enrollment_verification_is_rate_limited(
+    client,
+):
+    register_user(client)
+    login_user(client)
+
+    csrf_token = get_csrf(client)
+
+    start_response = client.post(
+        "/auth/mfa/totp/enroll",
+        json={},
+        headers={
+            "X-CSRF-Token": csrf_token
+        },
+    )
+
+    assert start_response.status_code == 200
+
+    for _ in range(5):
+        response = client.post(
+            "/auth/mfa/totp/verify-enrollment",
+            json={
+                "code": "000000",
+            },
+            headers={
+                "X-CSRF-Token": csrf_token
+            },
+        )
+
+        assert response.status_code in (
+            400,
+            401,
+        )
+
+    response = client.post(
+        "/auth/mfa/totp/verify-enrollment",
+        json={
+            "code": "000000",
+        },
+        headers={
+            "X-CSRF-Token": csrf_token
+        },
+    )
+
+    data = response.get_json()
+
+    assert response.status_code == 429
+
+    assert (
+        data["error"]["code"]
+        == "RATE_LIMITED"
+    )
