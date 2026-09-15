@@ -268,3 +268,101 @@
     width: 100%;
     min-height: 65px;
 }
+
+.marks-auth-mfa-settings {
+    max-width: 520px;
+    padding: 1.25rem;
+    border: 1px solid #d4d4d4;
+    border-radius: 10px;
+}
+
+.marks-auth-mfa-status {
+    margin-bottom: 1rem;
+}
+
+.marks-auth-mfa-section {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #d4d4d4;
+}
+
+.marks-auth-mfa-secret {
+    display: block;
+    padding: 0.75rem;
+    margin: 0.75rem 0;
+    overflow-wrap: anywhere;
+}
+
+.marks-auth-mfa-verify {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.marks-auth-mfa-verify input {
+    flex: 1;
+}
+
+.marks-auth-recovery-codes {
+    margin-top: 1rem;
+}
+
+.marks-auth-recovery-codes ul {
+    padding-left: 1.5rem;
+}
+
+.marks-auth-success {
+    padding: 0.75rem;
+    border-radius: 6px;
+}
+
+.marks-auth-mfa-qr {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+    margin: 1rem 0;
+    background: white;
+    border-radius: 8px;
+}
+
+.marks-auth-mfa-qr svg {
+    max-width: 100%;
+    height: auto;
+}
+
+.marks-auth-reauth-backdrop {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 10000;
+}
+
+.marks-auth-reauth-dialog {
+    width: 100%;
+    max-width: 420px;
+    padding: 1.5rem;
+    background: white;
+    color: #111;
+    border-radius: 10px;
+    box-shadow:
+        0 20px 60px
+        rgba(0, 0, 0, 0.3);
+}
+
+.marks-auth-reauth-dialog input {
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 0.75rem;
+}
+
+.marks-auth-reauth-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
