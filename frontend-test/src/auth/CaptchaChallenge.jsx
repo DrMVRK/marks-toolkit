@@ -10,6 +10,26 @@ export default function CaptchaChallenge({
     const containerRef = useRef(null);
     const widgetIdRef = useRef(null);
 
+    const onSuccessRef = useRef(onSuccess);
+    const onExpiredRef = useRef(onExpired);
+    const onErrorRef = useRef(onError);
+
+
+    useEffect(() => {
+        onSuccessRef.current = onSuccess;
+    }, [onSuccess]);
+
+
+    useEffect(() => {
+        onExpiredRef.current = onExpired;
+    }, [onExpired]);
+
+
+    useEffect(() => {
+        onErrorRef.current = onError;
+    }, [onError]);
+
+
     useEffect(() => {
         if (!siteKey) {
             return;
@@ -24,32 +44,39 @@ export default function CaptchaChallenge({
                 return;
             }
 
-            widgetIdRef.current = window.turnstile.render(
-                containerRef.current,
-                {
-                    sitekey: siteKey,
-                    theme: "auto",
+            widgetIdRef.current =
+                window.turnstile.render(
+                    containerRef.current,
+                    {
+                        sitekey: siteKey,
+                        theme: "auto",
 
-                    callback(token) {
-                        onSuccess(token);
-                    },
-
-                    "expired-callback"() {
-                        onExpired?.();
-
-                        if (widgetIdRef.current !== null) {
-                            window.turnstile.reset(
-                                widgetIdRef.current
+                        callback(token) {
+                            onSuccessRef.current?.(
+                                token
                             );
-                        }
-                    },
+                        },
 
-                    "error-callback"() {
-                        onError?.();
+                        "expired-callback"() {
+                            onExpiredRef.current?.();
+
+                            if (
+                                widgetIdRef.current !==
+                                null
+                            ) {
+                                window.turnstile.reset(
+                                    widgetIdRef.current
+                                );
+                            }
+                        },
+
+                        "error-callback"() {
+                            onErrorRef.current?.();
+                        }
                     }
-                }
-            );
+                );
         }
+
 
         if (window.turnstile) {
             renderTurnstile();
@@ -68,9 +95,11 @@ export default function CaptchaChallenge({
             };
         }
 
-        const existingScript = document.querySelector(
-            'script[data-marks-turnstile="true"]'
-        );
+
+        const existingScript =
+            document.querySelector(
+                'script[data-marks-turnstile="true"]'
+            );
 
         if (existingScript) {
             existingScript.addEventListener(
@@ -83,10 +112,23 @@ export default function CaptchaChallenge({
                     "load",
                     renderTurnstile
                 );
+
+                if (
+                    window.turnstile &&
+                    widgetIdRef.current !== null
+                ) {
+                    window.turnstile.remove(
+                        widgetIdRef.current
+                    );
+                }
+
+                widgetIdRef.current = null;
             };
         }
 
-        const script = document.createElement("script");
+
+        const script =
+            document.createElement("script");
 
         script.src =
             "https://challenges.cloudflare.com/" +
@@ -122,12 +164,8 @@ export default function CaptchaChallenge({
             widgetIdRef.current = null;
         };
 
-    }, [
-        siteKey,
-        onSuccess,
-        onExpired,
-        onError
-    ]);
+    }, [siteKey]);
+
 
     if (!siteKey) {
         return (
@@ -136,6 +174,7 @@ export default function CaptchaChallenge({
             </p>
         );
     }
+
 
     return (
         <div
