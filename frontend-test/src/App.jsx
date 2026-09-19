@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
-import AuthModal from "./auth/AuthModal";
-import { useAuth } from "./auth/AuthProvider";
-import MFASettings from "./auth/MFASettings";
+import AuthModal from "@marks-auth/AuthModal";
+import { useAuth } from "@marks-auth/AuthProvider";
+import MFASettings from "@marks-auth/MFASettings";
 
 import DemoHeader from "./components/DemoHeader";
 import SecurityBadge from "./components/SecurityBadge";

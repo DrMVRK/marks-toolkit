@@ -3,6 +3,7 @@ import { QRCodeSVG } from "qrcode.react";
 
 import { useAuth } from "./AuthProvider";
 import ReauthDialog from "./ReauthDialog";
+import PasskeyEnrollment from "./PasskeyEnrollment";
 
 
 export default function MFASettings() {
@@ -44,6 +45,7 @@ export default function MFASettings() {
     const [reauthLoading, setReauthLoading] =
         useState(false);
 
+
     useEffect(() => {
         if (authenticated) {
             refreshStatus();
@@ -55,6 +57,8 @@ export default function MFASettings() {
             setRecoveryCodes([]);
             setMessage("");
             setError(null);
+            setReauthAction(null);
+            setReauthError(null);
         }
     }, [authenticated]);
 
@@ -261,6 +265,7 @@ export default function MFASettings() {
         }
     }
 
+
     async function disableTotp(
         currentPassword
     ) {
@@ -363,7 +368,7 @@ export default function MFASettings() {
                         <strong>
                             {
                                 status.passkey_count
-                                    ?? 0
+                                ?? 0
                             }
                         </strong>
                     </p>
@@ -511,6 +516,14 @@ export default function MFASettings() {
                 </div>
             )}
 
+            {status?.passkeys_available && (
+                <PasskeyEnrollment
+                    onEnrolled={
+                        refreshStatus
+                    }
+                />
+            )}
+
             {status?.mfa_enabled && (
                 <div className="marks-auth-mfa-section">
                     <h3>
@@ -600,6 +613,7 @@ export default function MFASettings() {
                             ? "Disable Authenticator"
                             : "Generate Codes"
                 }
+
                 loading={reauthLoading}
 
                 error={reauthError}
@@ -620,7 +634,9 @@ export default function MFASettings() {
                         reauthAction ===
                         "disable-totp"
                     ) {
-                        disableTotp(password);
+                        disableTotp(
+                            password
+                        );
 
                         return;
                     }
@@ -640,7 +656,6 @@ export default function MFASettings() {
                     setReauthError(null);
                 }}
             />
-
         </section>
     );
 }

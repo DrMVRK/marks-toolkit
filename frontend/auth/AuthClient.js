@@ -137,4 +137,31 @@ export default class AuthClient {
             }
         );
     }
+
+    beginPasskeyRegistration({
+        currentPassword
+    }) {
+        return this.post(
+            "/passkeys/register/options",
+            {
+                current_password:
+                    currentPassword
+            }
+        );
+    }
+
+    finishPasskeyRegistration({
+        challengeId,
+        credential,
+        name = null
+    }) {
+        return this.post(
+            "/passkeys/register/verify",
+            {
+                challenge_id: challengeId,
+                credential,
+                name
+            }
+        );
+    }
 }
