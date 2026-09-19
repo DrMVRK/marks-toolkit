@@ -3,7 +3,6 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import { fileURLToPath } from "url";
 
-
 const __filename = fileURLToPath(
     import.meta.url
 );
@@ -11,7 +10,6 @@ const __filename = fileURLToPath(
 const __dirname = path.dirname(
     __filename
 );
-
 
 export default defineConfig({
     plugins: [
@@ -65,5 +63,17 @@ export default defineConfig({
                 changeOrigin: true
             }
         }
+    },
+
+    test: {
+        environment: "jsdom",
+
+        setupFiles: [
+            "./src/test/setupTests.js"
+        ],
+
+        clearMocks: true,
+
+        restoreMocks: true
     }
 });
