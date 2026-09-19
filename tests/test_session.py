@@ -242,7 +242,7 @@ def test_enabling_mfa_invalidates_existing_remember_cookie(
     )
 
     remember_cookie = client.get_cookie(
-        "remember_token"
+        "marks_auth_device_session"
     )
 
     assert remember_cookie is not None
@@ -349,9 +349,8 @@ def test_remember_cookie_after_mfa_can_restore_session(
     )
 
     remember_cookie = client.get_cookie(
-        "remember_token"
+        "marks_auth_device_session"
     )
-
     assert remember_cookie is not None
 
     remembered_value = (
@@ -363,7 +362,7 @@ def test_remember_cookie_after_mfa_can_restore_session(
     )
 
     restored_client.set_cookie(
-        "remember_token",
+        "marks_auth_device_session",
         remembered_value,
     )
 

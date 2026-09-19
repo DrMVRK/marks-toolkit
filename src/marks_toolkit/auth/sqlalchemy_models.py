@@ -13,15 +13,16 @@ from sqlalchemy import (
     LargeBinary,
     String,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+)
 
 from .user_contract import AuthUser
 
 
-
 class AuthBase(DeclarativeBase):
     pass
-
 
 
 class AuthUserModel(AuthBase, AuthUser):
@@ -35,40 +36,40 @@ class AuthUserModel(AuthBase, AuthUser):
         String(128),
         unique=True,
         nullable=False,
-        default=lambda: secrets.token_urlsafe(32)
+        default=lambda: secrets.token_urlsafe(32),
     )
 
     email: Mapped[str] = mapped_column(
         String(320),
-        nullable=False
+        nullable=False,
     )
 
     email_key: Mapped[str] = mapped_column(
         String(320),
         unique=True,
-        nullable=False
+        nullable=False,
     )
 
     username: Mapped[str] = mapped_column(
         String(64),
-        nullable=False
+        nullable=False,
     )
 
     username_key: Mapped[str] = mapped_column(
         String(64),
         unique=True,
-        nullable=False
+        nullable=False,
     )
 
     password_hash: Mapped[str] = mapped_column(
         String(512),
-        nullable=False
+        nullable=False,
     )
 
     active: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
-        default=True
+        default=True,
     )
 
     @property
@@ -112,7 +113,9 @@ class AuthTotpModel(AuthBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(
+            timezone.utc
+        ),
     )
 
     verified_at: Mapped[datetime | None] = mapped_column(
@@ -174,7 +177,9 @@ class AuthPasskeyModel(AuthBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(
+            timezone.utc
+        ),
     )
 
     last_used_at: Mapped[datetime | None] = mapped_column(
@@ -213,10 +218,80 @@ class AuthRecoveryCodeModel(AuthBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(
+            timezone.utc
+        ),
     )
 
     used_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
+    )
+
+
+class AuthSessionModel(AuthBase):
+    __tablename__ = "marks_auth_sessions"
+
+    id: Mapped[str] = mapped_column(
+        String(128),
+        primary_key=True,
+    )
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey(
+            "marks_auth_users.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+        index=True,
+    )
+
+    auth_id: Mapped[str] = mapped_column(
+        String(128),
+        nullable=False,
+        index=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(
+            timezone.utc
+        ),
+    )
+
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(
+            timezone.utc
+        ),
+        index=True,
+    )
+
+    ip_address: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+    )
+
+    user_agent: Mapped[str | None] = mapped_column(
+        String(1024),
+        nullable=True,
+    )
+
+    authentication_method: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+    )
+
+    remembered: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
+
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
     )

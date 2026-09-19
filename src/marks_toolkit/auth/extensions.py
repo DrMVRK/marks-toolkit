@@ -33,6 +33,18 @@ from .webauthn_challenge_store import (
     MemoryWebAuthnChallengeStore,
     RedisWebAuthnChallengeStore,
 )
+from .memory_session_store import (
+    MemorySessionStore,
+)
+from .session_service import (
+    SessionService,
+)
+from .session_runtime import (
+    SessionTokenService,
+    clear_persistent_session_cookie,
+    validate_current_request_session,
+)
+
 
 from flask_login import LoginManager
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -51,6 +63,7 @@ class AuthKit:
         captcha_provider=None,
         mfa_store=None,
         passkey_store=None,
+        session_store=None,
     ):
         if not isinstance(user_store, UserStore):
             raise TypeError(
@@ -546,6 +559,37 @@ class AuthKit:
         audit_logger = StandardAuditLogger()
 
         # -------------------------------------------------
+        # Session registry
+        # -------------------------------------------------
+
+        if session_store is None:
+            session_store = (
+                MemorySessionStore()
+            )
+
+        session_service = (
+            SessionService(
+                session_store=(
+                    session_store
+                ),
+                touch_interval_seconds=(
+                    app.config.get(
+                        "MARKS_AUTH_SESSION_TOUCH_INTERVAL",
+                        60,
+                    )
+                ),
+            )
+        )
+
+        session_token_service = (
+            SessionTokenService(
+                app.config[
+                    "SECRET_KEY"
+                ]
+            )
+        )
+
+        # -------------------------------------------------
         # Shared application state
         # -------------------------------------------------
 
@@ -593,9 +637,47 @@ class AuthKit:
                 webauthn_challenge_store
             ),
             passkey_service=passkey_service,
+                        session_store=(
+                session_store
+            ),
+            session_service=(
+                session_service
+            ),
+            session_token_service=(
+                session_token_service
+            ),
         )
 
         app.extensions["marks_auth"] = state
+
+        @app.before_request
+        def marks_auth_validate_session():
+            state = (
+                app.extensions[
+                    "marks_auth"
+                ]
+            )
+
+            validate_current_request_session(
+                state
+            )
+
+        @app.after_request
+        def marks_auth_session_cookie_cleanup(
+            response,
+        ):
+            from flask import g
+
+            if getattr(
+                g,
+                "marks_auth_clear_session_cookie",
+                False,
+            ):
+                clear_persistent_session_cookie(
+                    response
+                )
+
+            return response
 
         app.register_blueprint(
             auth_bp,

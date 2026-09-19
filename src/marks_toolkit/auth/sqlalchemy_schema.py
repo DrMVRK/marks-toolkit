@@ -5,7 +5,7 @@ from .sqlalchemy_models import (
 )
 
 
-AUTH_SCHEMA_VERSION = 1
+AUTH_SCHEMA_VERSION = 2
 
 
 AUTH_TABLES = (
@@ -13,22 +13,15 @@ AUTH_TABLES = (
     "marks_auth_totp",
     "marks_auth_passkeys",
     "marks_auth_recovery_codes",
+    "marks_auth_sessions",
 )
 
 
 def create_auth_schema(
     engine,
 ) -> None:
-    """
-    Create missing MARKS AuthKit tables.
-
-    Intended for fresh installations and
-    development environments.
-
-    This does not migrate existing tables.
-    """
     AuthBase.metadata.create_all(
-        bind=engine,
+        bind=engine
     )
 
 

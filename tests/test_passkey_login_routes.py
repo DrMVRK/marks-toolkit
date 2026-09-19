@@ -344,17 +344,18 @@ def test_passkey_login_does_not_create_remember_cookie(
 
     assert response.status_code == 200
 
-    cookies = (
-        response.headers.getlist(
-            "Set-Cookie"
+    assert (
+        client.get_cookie(
+            "remember_token"
         )
+        is None
     )
 
-    assert not any(
-        cookie.startswith(
-            "remember_token="
+    assert (
+        client.get_cookie(
+            "marks_auth_device_session"
         )
-        for cookie in cookies
+        is None
     )
 
 

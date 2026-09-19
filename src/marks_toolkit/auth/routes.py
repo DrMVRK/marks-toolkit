@@ -4,8 +4,6 @@ from flask import Blueprint, current_app, request
 from flask_login import (
     current_user,
     login_required,
-    login_user,
-    logout_user,
 )
 
 from .responses import (
@@ -26,6 +24,14 @@ from .request_validation import (
 )
 from webauthn.helpers.exceptions import (
     WebAuthnException,
+)
+from .session_runtime import (
+    clear_authenticated_session,
+    clear_persistent_session_cookie,
+    establish_authenticated_session,
+    get_current_session_id,
+    revoke_current_session,
+    set_persistent_session_cookie,
 )
 
 auth_bp = Blueprint("marks_auth", __name__)
@@ -96,16 +102,25 @@ def refresh_security_session(
     state,
     user,
 ):
+    # Security-sensitive credential changes invalidate every
+    # registered session for this account.
+    state.session_service.revoke_all_sessions(
+        user=user
+    )
+
     state.user_store.rotate_auth_id(
         user
     )
 
-    logout_user()
+    clear_authenticated_session()
 
-    login_user(
-        user,
-        remember=False,
-        fresh=True,
+    return establish_authenticated_session(
+        state=state,
+        user=user,
+        authentication_method=(
+            "security-refresh"
+        ),
+        remembered=False,
     )
 
 @auth_bp.get("/test")
@@ -386,9 +401,15 @@ def login():
             status_code=202,
         )
 
-    login_user(
-        user,
-        remember=remember,
+    session_record = (
+        establish_authenticated_session(
+            state=state,
+            user=user,
+            authentication_method=(
+                "password"
+            ),
+            remembered=remember,
+        )
     )
 
     state.audit_logger.log(
@@ -397,9 +418,13 @@ def login():
         username=user.username,
         ip_address=ip_address,
         remember=remember,
+        session_id=session_record.id,
+        authentication_method=(
+            "password"
+        ),
     )
 
-    return success_response(
+    response = success_response(
         data={
             "auth_id": user.auth_id,
             "username": user.username,
@@ -408,15 +433,47 @@ def login():
         message="Login successful.",
     )
 
+    return set_persistent_session_cookie(
+        response,
+        state=state,
+        session_record=session_record,
+    )
+
 
 @auth_bp.post("/logout")
 @login_required
 @csrf_protected
 def logout():
-    logout_user()
+    state = current_app.extensions[
+        "marks_auth"
+    ]
 
-    return success_response(
+    session_id = (
+        get_current_session_id()
+    )
+
+    if session_id:
+        state.audit_logger.log(
+            "session_logout",
+            auth_id=current_user.auth_id,
+            username=current_user.username,
+            session_id=session_id,
+            ip_address=(
+                request.remote_addr
+                or "unknown"
+            ),
+        )
+
+    revoke_current_session(
+        state
+    )
+
+    response = success_response(
         message="Logout successful."
+    )
+
+    return clear_persistent_session_cookie(
+        response
     )
 
 
@@ -605,13 +662,21 @@ def change_password():
         ip_address=request.remote_addr or "unknown",
     )
 
-    logout_user()
+    state.session_service.revoke_all_sessions(
+        user=current_user
+    )
 
-    return success_response(
+    clear_authenticated_session()
+
+    response = success_response(
         message=(
             "Password changed successfully. "
             "Please log in again."
         )
+    )
+
+    return clear_persistent_session_cookie(
+        response
     )
 
 
@@ -954,7 +1019,7 @@ def finish_passkey_registration():
         ),
     )
 
-    return success_response(
+    response = success_response(
         data={
             "passkey": {
                 "id": passkey.id,
@@ -969,6 +1034,10 @@ def finish_passkey_registration():
             "Passkey registered successfully."
         ),
         status_code=201,
+    )
+
+    return clear_persistent_session_cookie(
+        response
     )
 
 
@@ -1190,13 +1259,11 @@ def finish_passkey_login():
             status_code=401,
         )
 
-    logged_in = login_user(
+    if not getattr(
         user,
-        remember=False,
-        fresh=True,
-    )
-
-    if not logged_in:
+        "is_active",
+        False,
+    ):
         state.audit_logger.log(
             "passkey_login_failure",
             auth_id=getattr(
@@ -1218,6 +1285,17 @@ def finish_passkey_login():
             status_code=403,
         )
 
+    session_record = (
+        establish_authenticated_session(
+            state=state,
+            user=user,
+            authentication_method=(
+                "passkey"
+            ),
+            remembered=False,
+        )
+    )
+
     state.audit_logger.log(
         "login_success",
         auth_id=user.auth_id,
@@ -1228,6 +1306,7 @@ def finish_passkey_login():
         ),
         remember=False,
         authentication_method="passkey",
+        session_id=session_record.id,
     )
 
     return success_response(
@@ -1585,10 +1664,14 @@ def delete_passkey(
         ),
     )
 
-    return success_response(
+    response = success_response(
         message=(
             "Passkey deleted successfully."
         )
+    )
+
+    return clear_persistent_session_cookie(
+        response
     )
 
 
@@ -1736,8 +1819,12 @@ def verify_totp_enrollment():
         ip_address=request.remote_addr or "unknown",
     )
 
-    return success_response(
+    response = success_response(
         message="TOTP enabled successfully."
+    )
+
+    return clear_persistent_session_cookie(
+        response
     )
 
 
@@ -1815,8 +1902,12 @@ def disable_totp():
         ),
     )
 
-    return success_response(
+    response = success_response(
         message="TOTP disabled successfully."
+    )
+
+    return clear_persistent_session_cookie(
+        response
     )
 
 
@@ -2081,9 +2172,15 @@ def complete_totp_challenge():
 
     remember = consumed_challenge["remember"]
 
-    login_user(
-        user,
-        remember=remember,
+    session_record = (
+        establish_authenticated_session(
+            state=state,
+            user=user,
+            authentication_method=(
+                "password+totp"
+            ),
+            remembered=remember,
+        )
     )
 
     state.audit_logger.log(
@@ -2096,15 +2193,22 @@ def complete_totp_challenge():
         ),
         remember=remember,
         mfa_method="totp",
+        session_id=session_record.id,
     )
 
-    return success_response(
+    response = success_response(
         data={
             "auth_id": user.auth_id,
             "username": user.username,
             "email": user.email,
         },
         message="Login successful.",
+    )
+
+    return set_persistent_session_cookie(
+        response,
+        state=state,
+        session_record=session_record,
     )
 
 @auth_bp.post(
@@ -2233,9 +2337,15 @@ def complete_recovery_code_challenge():
 
     remember = consumed_challenge["remember"]
 
-    login_user(
-        user,
-        remember=remember,
+    session_record = (
+        establish_authenticated_session(
+            state=state,
+            user=user,
+            authentication_method=(
+                "password+recovery_code"
+            ),
+            remembered=remember,
+        )
     )
 
     state.audit_logger.log(
@@ -2248,13 +2358,20 @@ def complete_recovery_code_challenge():
         ),
         remember=remember,
         mfa_method="recovery_code",
+        session_id=session_record.id,
     )
 
-    return success_response(
+    response = success_response(
         data={
             "auth_id": user.auth_id,
             "username": user.username,
             "email": user.email,
         },
         message="Login successful.",
+    )
+
+    return set_persistent_session_cookie(
+        response,
+        state=state,
+        session_record=session_record,
     )
