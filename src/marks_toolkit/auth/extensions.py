@@ -44,6 +44,9 @@ from .session_runtime import (
     clear_persistent_session_cookie,
     validate_current_request_session,
 )
+from .security_policy import (
+    apply_security_profile,
+)
 
 
 from flask_login import LoginManager
@@ -69,6 +72,10 @@ class AuthKit:
             raise TypeError(
                 "user_store must be an instance of UserStore"
             )
+
+        apply_security_profile(
+            app
+        )
 
         config = AuthConfig(app)
 
@@ -567,18 +574,39 @@ class AuthKit:
                 MemorySessionStore()
             )
 
-        session_service = (
-            SessionService(
-                session_store=(
-                    session_store
-                ),
-                touch_interval_seconds=(
-                    app.config.get(
-                        "MARKS_AUTH_SESSION_TOUCH_INTERVAL",
-                        60,
-                    )
-                ),
-            )
+        session_service = SessionService(
+            session_store=session_store,
+
+            touch_interval_seconds=(
+                app.config.get(
+                    "MARKS_AUTH_SESSION_TOUCH_INTERVAL",
+                    60,
+                )
+            ),
+
+            idle_timeout_seconds=(
+                app.config.get(
+                    "MARKS_AUTH_SESSION_IDLE_TIMEOUT",
+                    43200,
+                )
+            ),
+
+            absolute_timeout_seconds=(
+                app.config.get(
+                    "MARKS_AUTH_SESSION_ABSOLUTE_TIMEOUT",
+                    604800,
+                )
+            ),
+
+            remembered_absolute_timeout_seconds=(
+                app.config.get(
+                    (
+                        "MARKS_AUTH_REMEMBERED_"
+                        "SESSION_ABSOLUTE_TIMEOUT"
+                    ),
+                    2592000,
+                )
+            ),
         )
 
         session_token_service = (

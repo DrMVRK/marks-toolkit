@@ -1,4 +1,6 @@
 import base64
+import hashlib
+import hmac
 
 from flask import Blueprint, current_app, request
 from flask_login import (
@@ -97,6 +99,56 @@ def decode_passkey_credential_id(
         raise ValueError(
             "Invalid passkey credential ID."
         ) from error
+
+def encode_session_public_id(
+    session_id,
+):
+    if (
+        not isinstance(session_id, str)
+        or not session_id
+    ):
+        raise ValueError(
+            "Invalid session ID."
+        )
+
+    return hashlib.sha256(
+        session_id.encode("utf-8")
+    ).hexdigest()
+
+
+def find_session_by_public_id(
+    state,
+    user_id,
+    public_id,
+):
+    if (
+        not isinstance(public_id, str)
+        or len(public_id) != 64
+    ):
+        return None
+
+    sessions = (
+        state.session_store
+        .list_for_user(
+            user_id,
+            include_revoked=False,
+        )
+    )
+
+    for record in sessions:
+        candidate = (
+            encode_session_public_id(
+                record.id
+            )
+        )
+
+        if hmac.compare_digest(
+            candidate,
+            public_id,
+        ):
+            return record
+
+    return None
 
 def refresh_security_session(
     state,
@@ -2031,6 +2083,255 @@ def recovery_code_status():
         data={
             "remaining": remaining,
         }
+    )
+
+
+@auth_bp.get("/sessions")
+@login_required
+def list_sessions():
+    state = current_app.extensions[
+        "marks_auth"
+    ]
+
+    current_session_id = (
+        get_current_session_id()
+    )
+
+    records = (
+        state.session_store
+        .list_for_user(
+            current_user.id,
+            include_revoked=False,
+        )
+    )
+
+    sessions = []
+
+    for record in records:
+        sessions.append(
+            {
+                "id": (
+                    encode_session_public_id(
+                        record.id
+                    )
+                ),
+
+                "current": (
+                    record.id
+                    == current_session_id
+                ),
+
+                "created_at": (
+                    record.created_at
+                    .isoformat()
+                    if record.created_at
+                    is not None
+                    else None
+                ),
+
+                "last_seen_at": (
+                    record.last_seen_at
+                    .isoformat()
+                    if record.last_seen_at
+                    is not None
+                    else None
+                ),
+
+                "ip_address": (
+                    record.ip_address
+                ),
+
+                "user_agent": (
+                    record.user_agent
+                ),
+
+                "authentication_method": (
+                    record
+                    .authentication_method
+                ),
+
+                "remembered": (
+                    record.remembered
+                ),
+            }
+        )
+
+    return no_store_response(
+        data={
+            "sessions": sessions,
+        }
+    )
+
+
+@auth_bp.delete(
+    "/sessions/<session_public_id>"
+)
+@login_required
+@csrf_protected
+def revoke_session(
+    session_public_id,
+):
+    state = current_app.extensions[
+        "marks_auth"
+    ]
+
+    target = (
+        find_session_by_public_id(
+            state,
+            current_user.id,
+            session_public_id,
+        )
+    )
+
+    if target is None:
+        return error_response(
+            code="SESSION_NOT_FOUND",
+            message=(
+                "Session was not found."
+            ),
+            status_code=404,
+        )
+
+    current_session_id = (
+        get_current_session_id()
+    )
+
+    is_current = (
+        target.id
+        == current_session_id
+    )
+
+    if is_current:
+        state.audit_logger.log(
+            "session_revoked",
+            auth_id=(
+                current_user.auth_id
+            ),
+            username=(
+                current_user.username
+            ),
+            session_id=(
+                session_public_id
+            ),
+            current=True,
+            ip_address=(
+                request.remote_addr
+                or "unknown"
+            ),
+        )
+
+        revoke_current_session(
+            state
+        )
+
+        response = (
+            success_response(
+                message=(
+                    "Session revoked "
+                    "successfully."
+                )
+            )
+        )
+
+        return (
+            clear_persistent_session_cookie(
+                response
+            )
+        )
+
+    revoked = (
+        state.session_service
+        .revoke_session(
+            session_id=target.id,
+            user=current_user,
+        )
+    )
+
+    if not revoked:
+        return error_response(
+            code="SESSION_NOT_FOUND",
+            message=(
+                "Session was not found."
+            ),
+            status_code=404,
+        )
+
+    state.audit_logger.log(
+        "session_revoked",
+        auth_id=current_user.auth_id,
+        username=(
+            current_user.username
+        ),
+        session_id=(
+            session_public_id
+        ),
+        current=False,
+        ip_address=(
+            request.remote_addr
+            or "unknown"
+        ),
+    )
+
+    return success_response(
+        message=(
+            "Session revoked successfully."
+        )
+    )
+
+
+@auth_bp.post(
+    "/sessions/revoke-others"
+)
+@login_required
+@csrf_protected
+def revoke_other_sessions():
+    state = current_app.extensions[
+        "marks_auth"
+    ]
+
+    current_session_id = (
+        get_current_session_id()
+    )
+
+    if not current_session_id:
+        return error_response(
+            code="SESSION_UNAVAILABLE",
+            message=(
+                "Current session could "
+                "not be identified."
+            ),
+            status_code=401,
+        )
+
+    count = (
+        state.session_service
+        .revoke_other_sessions(
+            current_session_id=(
+                current_session_id
+            ),
+            user=current_user,
+        )
+    )
+
+    state.audit_logger.log(
+        "other_sessions_revoked",
+        auth_id=current_user.auth_id,
+        username=current_user.username,
+        revoked_count=count,
+        ip_address=(
+            request.remote_addr
+            or "unknown"
+        ),
+    )
+
+    return success_response(
+        data={
+            "revoked_count": count,
+        },
+        message=(
+            "Other sessions revoked "
+            "successfully."
+        ),
     )
 
 

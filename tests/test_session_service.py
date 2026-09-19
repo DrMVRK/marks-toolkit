@@ -543,3 +543,295 @@ def test_invalid_touch_interval_rejected(
             session_store=store,
             touch_interval_seconds=-1,
         )
+
+def test_idle_session_expires():
+    store = MemorySessionStore()
+
+    service = SessionService(
+        session_store=store,
+        touch_interval_seconds=60,
+        idle_timeout_seconds=300,
+        absolute_timeout_seconds=3600,
+        remembered_absolute_timeout_seconds=7200,
+    )
+
+    user = DummyUser(
+        id=1,
+        auth_id="auth-1",
+    )
+
+    started = datetime(
+        2026,
+        9,
+        19,
+        12,
+        0,
+        tzinfo=timezone.utc,
+    )
+
+    record = service.create_session(
+        user=user,
+        now=started,
+    )
+
+    valid = service.validate_session(
+        session_id=record.id,
+        user=user,
+        now=(
+            started
+            + timedelta(
+                seconds=301
+            )
+        ),
+    )
+
+    assert valid is False
+
+    stored = store.get(
+        record.id
+    )
+
+    assert (
+        stored.revoked_at
+        is not None
+    )
+
+
+def test_active_session_does_not_idle_expire():
+    store = MemorySessionStore()
+
+    service = SessionService(
+        session_store=store,
+        touch_interval_seconds=60,
+        idle_timeout_seconds=300,
+        absolute_timeout_seconds=3600,
+        remembered_absolute_timeout_seconds=7200,
+    )
+
+    user = DummyUser(
+        id=1,
+        auth_id="auth-1",
+    )
+
+    started = datetime(
+        2026,
+        9,
+        19,
+        12,
+        0,
+        tzinfo=timezone.utc,
+    )
+
+    record = service.create_session(
+        user=user,
+        now=started,
+    )
+
+    assert service.validate_session(
+        session_id=record.id,
+        user=user,
+        now=(
+            started
+            + timedelta(
+                seconds=120
+            )
+        ),
+    )
+
+    assert service.validate_session(
+        session_id=record.id,
+        user=user,
+        now=(
+            started
+            + timedelta(
+                seconds=360
+            )
+        ),
+    )
+
+
+def test_absolute_timeout_expires_session():
+    store = MemorySessionStore()
+
+    service = SessionService(
+        session_store=store,
+        touch_interval_seconds=60,
+        idle_timeout_seconds=0,
+        absolute_timeout_seconds=600,
+        remembered_absolute_timeout_seconds=1200,
+    )
+
+    user = DummyUser(
+        id=1,
+        auth_id="auth-1",
+    )
+
+    started = datetime(
+        2026,
+        9,
+        19,
+        12,
+        0,
+        tzinfo=timezone.utc,
+    )
+
+    record = service.create_session(
+        user=user,
+        now=started,
+    )
+
+    valid = service.validate_session(
+        session_id=record.id,
+        user=user,
+        now=(
+            started
+            + timedelta(
+                seconds=601
+            )
+        ),
+    )
+
+    assert valid is False
+
+    stored = store.get(
+        record.id
+    )
+
+    assert (
+        stored.revoked_at
+        is not None
+    )
+
+
+def test_remembered_session_uses_longer_absolute_timeout():
+    store = MemorySessionStore()
+
+    service = SessionService(
+        session_store=store,
+        touch_interval_seconds=60,
+        idle_timeout_seconds=0,
+        absolute_timeout_seconds=600,
+        remembered_absolute_timeout_seconds=1200,
+    )
+
+    user = DummyUser(
+        id=1,
+        auth_id="auth-1",
+    )
+
+    started = datetime(
+        2026,
+        9,
+        19,
+        12,
+        0,
+        tzinfo=timezone.utc,
+    )
+
+    record = service.create_session(
+        user=user,
+        remembered=True,
+        now=started,
+    )
+
+    valid = service.validate_session(
+        session_id=record.id,
+        user=user,
+        now=(
+            started
+            + timedelta(
+                seconds=900
+            )
+        ),
+    )
+
+    assert valid is True
+
+
+def test_remembered_session_eventually_expires():
+    store = MemorySessionStore()
+
+    service = SessionService(
+        session_store=store,
+        touch_interval_seconds=60,
+        idle_timeout_seconds=0,
+        absolute_timeout_seconds=600,
+        remembered_absolute_timeout_seconds=1200,
+    )
+
+    user = DummyUser(
+        id=1,
+        auth_id="auth-1",
+    )
+
+    started = datetime(
+        2026,
+        9,
+        19,
+        12,
+        0,
+        tzinfo=timezone.utc,
+    )
+
+    record = service.create_session(
+        user=user,
+        remembered=True,
+        now=started,
+    )
+
+    valid = service.validate_session(
+        session_id=record.id,
+        user=user,
+        now=(
+            started
+            + timedelta(
+                seconds=1201
+            )
+        ),
+    )
+
+    assert valid is False
+
+
+def test_zero_idle_timeout_disables_idle_expiration():
+    store = MemorySessionStore()
+
+    service = SessionService(
+        session_store=store,
+        touch_interval_seconds=60,
+        idle_timeout_seconds=0,
+        absolute_timeout_seconds=0,
+        remembered_absolute_timeout_seconds=0,
+    )
+
+    user = DummyUser(
+        id=1,
+        auth_id="auth-1",
+    )
+
+    started = datetime(
+        2026,
+        9,
+        19,
+        12,
+        0,
+        tzinfo=timezone.utc,
+    )
+
+    record = service.create_session(
+        user=user,
+        now=started,
+    )
+
+    valid = service.validate_session(
+        session_id=record.id,
+        user=user,
+        now=(
+            started
+            + timedelta(
+                days=365
+            )
+        ),
+    )
+
+    assert valid is True

@@ -369,6 +369,9 @@ app.config[
     "MARKS_AUTH_WEBAUTHN_CHALLENGE_TTL"
 ] = 300
 
+app.config[
+    "MARKS_AUTH_SECURITY_PROFILE"
+] = "standard"
 
 # --------------------------------------------------
 # Development stores

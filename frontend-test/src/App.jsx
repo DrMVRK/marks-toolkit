@@ -7,6 +7,8 @@ import MFASettings from "@marks-auth/MFASettings";
 import DemoHeader from "./components/DemoHeader";
 import SecurityBadge from "./components/SecurityBadge";
 import UserDashboard from "./components/UserDashboard";
+import SessionManager
+    from "@marks-auth/SessionManager.jsx";
 
 import "@marks-auth/auth.css";
 import "./demo.css";
@@ -376,6 +378,7 @@ export default function App() {
 
                                     <div className="demo-embedded-auth">
                                         <MFASettings />
+                                        <SessionManager />
                                     </div>
                                 </div>
                             )}

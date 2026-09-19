@@ -846,3 +846,316 @@
         width: 100%;
     }
 }
+
+.marks-auth-session-manager {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    margin-top: 24px;
+}
+
+.marks-auth-session-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.marks-auth-session-header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+}
+
+.marks-auth-session-header p {
+    margin: 5px 0 0;
+    color: #6e6e73;
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.marks-auth-session-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.marks-auth-session-card {
+    display: grid;
+    grid-template-columns:
+        auto
+        minmax(0, 1fr)
+        auto;
+    align-items: center;
+    gap: 14px;
+
+    padding: 16px;
+
+    border: 1px solid
+        rgba(0, 0, 0, 0.08);
+
+    border-radius: 18px;
+
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            0.72
+        );
+
+    transition:
+        border-color 160ms ease,
+        background 160ms ease,
+        transform 160ms ease;
+}
+
+.marks-auth-session-card:hover {
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            0.92
+        );
+}
+
+.marks-auth-session-current {
+    border-color:
+        rgba(
+            0,
+            113,
+            227,
+            0.24
+        );
+
+    background:
+        rgba(
+            0,
+            113,
+            227,
+            0.045
+        );
+}
+
+.marks-auth-session-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 42px;
+    height: 42px;
+
+    border-radius: 13px;
+
+    background: #f2f2f7;
+
+    color: #1d1d1f;
+
+    font-size: 20px;
+    line-height: 1;
+}
+
+.marks-auth-session-current
+.marks-auth-session-icon {
+    background:
+        rgba(
+            0,
+            113,
+            227,
+            0.1
+        );
+
+    color: #0071e3;
+}
+
+.marks-auth-session-content {
+    min-width: 0;
+}
+
+.marks-auth-session-title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.marks-auth-session-title strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    color: #1d1d1f;
+
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.marks-auth-session-current-badge {
+    display: inline-flex;
+    align-items: center;
+
+    padding: 3px 8px;
+
+    border-radius: 999px;
+
+    background:
+        rgba(
+            0,
+            113,
+            227,
+            0.11
+        );
+
+    color: #0066cc;
+
+    font-size: 11px;
+    font-weight: 650;
+}
+
+.marks-auth-session-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+
+    margin-top: 6px;
+
+    color: #6e6e73;
+
+    font-size: 13px;
+}
+
+.marks-auth-session-meta span:not(:last-child)::after {
+    content: "·";
+    margin-left: 12px;
+    color: #aeaeb2;
+}
+
+.marks-auth-session-times {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+
+    margin-top: 5px;
+
+    color: #86868b;
+
+    font-size: 12px;
+}
+
+.marks-auth-session-revoke {
+    border: 0;
+    background: transparent;
+
+    color: #d70015;
+
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+
+    cursor: pointer;
+}
+
+.marks-auth-session-revoke:hover {
+    text-decoration: underline;
+}
+
+.marks-auth-session-revoke:disabled {
+    opacity: 0.5;
+    cursor: default;
+    text-decoration: none;
+}
+
+.marks-auth-session-empty {
+    padding: 22px;
+
+    border-radius: 18px;
+
+    background: #f5f5f7;
+
+    color: #6e6e73;
+
+    text-align: center;
+    font-size: 14px;
+}
+
+.marks-auth-session-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+
+    padding-top: 4px;
+}
+
+.marks-auth-session-footer p {
+    margin: 0;
+
+    color: #86868b;
+
+    font-size: 12px;
+}
+
+.marks-auth-danger-button {
+    min-height: 38px;
+
+    padding: 8px 15px;
+
+    border: 0;
+    border-radius: 999px;
+
+    background:
+        rgba(
+            215,
+            0,
+            21,
+            0.08
+        );
+
+    color: #d70015;
+
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+
+    cursor: pointer;
+}
+
+.marks-auth-danger-button:hover {
+    background:
+        rgba(
+            215,
+            0,
+            21,
+            0.13
+        );
+}
+
+.marks-auth-danger-button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+@media (
+    max-width: 640px
+) {
+    .marks-auth-session-header {
+        flex-direction: column;
+    }
+
+    .marks-auth-session-card {
+        grid-template-columns:
+            auto
+            minmax(0, 1fr);
+    }
+
+    .marks-auth-session-revoke {
+        grid-column: 2;
+        justify-self: start;
+    }
+
+    .marks-auth-session-meta span::after {
+        display: none;
+    }
+}
