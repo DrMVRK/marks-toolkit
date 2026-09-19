@@ -23,6 +23,9 @@ class AuthState:
             totp_service,
             recovery_code_manager,
             mfa_challenge_service,
+            passkey_store=None,
+            webauthn_challenge_store=None,
+            passkey_service=None,
     ):
         
         self.config = config
@@ -42,16 +45,12 @@ class AuthState:
         self.audit_logger = audit_logger
         self.password_change_service = password_change_service
         self.mfa_store = mfa_store
-        self.secret_encryption_service = (
-            secret_encryption_service
-        )
-        self.recovery_code_service = (
-            recovery_code_service
-        )
+        self.secret_encryption_service = secret_encryption_service
+        self.recovery_code_service =  recovery_code_service
         self.totp_service = totp_service
-        self.recovery_code_manager = (
-            recovery_code_manager
-        )
-        self.mfa_challenge_service = (
-            mfa_challenge_service
-        )
+        self.recovery_code_manager = recovery_code_manager 
+        self.mfa_challenge_service = mfa_challenge_service
+        self.passkey_store = passkey_store
+        self.webauthn_challenge_store = webauthn_challenge_store
+        self.passkey_service = passkey_service
+        

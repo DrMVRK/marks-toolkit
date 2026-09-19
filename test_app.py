@@ -5,10 +5,21 @@ from cryptography.fernet import Fernet
 from flask import Flask
 
 from marks_toolkit.auth import AuthKit
-from marks_toolkit.auth.captcha import TurnstileCaptchaProvider
-from marks_toolkit.auth.memory_mfa_store import MemoryMFAStore
-from marks_toolkit.auth.user_contract import AuthUser
-from marks_toolkit.auth.user_store import UserStore
+from marks_toolkit.auth.captcha import (
+    TurnstileCaptchaProvider,
+)
+from marks_toolkit.auth.memory_mfa_store import (
+    MemoryMFAStore,
+)
+from marks_toolkit.auth.memory_passkey_store import (
+    MemoryPasskeyStore,
+)
+from marks_toolkit.auth.user_contract import (
+    AuthUser,
+)
+from marks_toolkit.auth.user_store import (
+    UserStore,
+)
 
 
 # --------------------------------------------------
@@ -17,7 +28,10 @@ from marks_toolkit.auth.user_store import UserStore
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s"
+    format=(
+        "%(asctime)s %(levelname)s "
+        "%(name)s: %(message)s"
+    ),
 )
 
 
@@ -33,7 +47,7 @@ class TestUser(AuthUser):
         email,
         username,
         password_hash,
-        is_active=True
+        is_active=True,
     ):
         self.id = user_id
         self.auth_id = auth_id
@@ -56,32 +70,48 @@ class TestUserStore(UserStore):
         self.users = []
         self.next_id = 1
 
-    def find_by_identity(self, identity_key):
+    def find_by_identity(
+        self,
+        identity_key,
+    ):
         for user in self.users:
             if (
-                user.email.casefold() == identity_key
-                or user.username.casefold() == identity_key
+                user.email.casefold()
+                == identity_key
+                or user.username.casefold()
+                == identity_key
             ):
                 return user
 
         return None
 
-    def find_by_auth_id(self, auth_id):
+    def find_by_auth_id(
+        self,
+        auth_id,
+    ):
         for user in self.users:
             if user.auth_id == auth_id:
                 return user
 
         return None
 
-    def email_exists(self, email_key):
+    def email_exists(
+        self,
+        email_key,
+    ):
         return any(
-            user.email.casefold() == email_key
+            user.email.casefold()
+            == email_key
             for user in self.users
         )
 
-    def username_exists(self, username_key):
+    def username_exists(
+        self,
+        username_key,
+    ):
         return any(
-            user.username.casefold() == username_key
+            user.username.casefold()
+            == username_key
             for user in self.users
         )
 
@@ -89,14 +119,16 @@ class TestUserStore(UserStore):
         self,
         email,
         username,
-        password_hash
+        password_hash,
     ):
         user = TestUser(
             user_id=self.next_id,
-            auth_id=secrets.token_urlsafe(32),
+            auth_id=(
+                secrets.token_urlsafe(32)
+            ),
             email=email,
             username=username,
-            password_hash=password_hash
+            password_hash=password_hash,
         )
 
         self.next_id += 1
@@ -104,25 +136,37 @@ class TestUserStore(UserStore):
 
         return user
 
-    def rotate_auth_id(self, user):
-        user.auth_id = secrets.token_urlsafe(32)
+    def rotate_auth_id(
+        self,
+        user,
+    ):
+        user.auth_id = (
+            secrets.token_urlsafe(32)
+        )
 
         return user.auth_id
 
     def update_password(
         self,
         user,
-        password_hash
+        password_hash,
     ):
-        user.password_hash = password_hash
+        user.password_hash = (
+            password_hash
+        )
 
     def update_password_and_rotate_auth_id(
         self,
         user,
-        password_hash
+        password_hash,
     ):
-        user.password_hash = password_hash
-        user.auth_id = secrets.token_urlsafe(32)
+        user.password_hash = (
+            password_hash
+        )
+
+        user.auth_id = (
+            secrets.token_urlsafe(32)
+        )
 
         return user.auth_id
 
@@ -141,11 +185,14 @@ app = Flask(__name__)
 # Development/testing only.
 # Production applications should load this from
 # an environment variable or secrets manager.
+
 app.config["SECRET_KEY"] = (
     "dev-only-secret-key"
 )
 
-app.config["MARKS_AUTH_RESET_URL"] = (
+app.config[
+    "MARKS_AUTH_RESET_URL"
+] = (
     "http://127.0.0.1:5173/reset-password"
 )
 
@@ -165,24 +212,35 @@ app.config[
     "MARKS_AUTH_PROXY_FIX_ENABLED"
 ] = False
 
+
 # --------------------------------------------------
 # CAPTCHA configuration
 # --------------------------------------------------
 
 # Cloudflare official test site key.
+
 app.config[
     "MARKS_AUTH_CAPTCHA_SITE_KEY"
 ] = "1x00000000000000000000AA"
 
-captcha_provider = TurnstileCaptchaProvider(
-    secret_key=(
-        "1x0000000000000000000000000000000AA"
-    ),
-    allowed_hostnames=[
-        "127.0.0.1",
-        "localhost",
-    ],
+captcha_provider = (
+    TurnstileCaptchaProvider(
+        secret_key=(
+            "1x0000000000000000000000000000000AA"
+        ),
+        allowed_hostnames=[
+            "127.0.0.1",
+            "localhost",
+
+            # Cloudflare's official always-pass
+            # Turnstile test credentials return
+            # example.com as the verification
+            # hostname.
+            "example.com",
+        ],
+    )
 )
+
 
 # --------------------------------------------------
 # Authentication risk configuration
@@ -232,12 +290,18 @@ app.config[
 
 # Development only.
 #
-# This key is regenerated every time Flask restarts.
-# That is acceptable because the development MFA
-# store below is also entirely in memory.
+# This key is regenerated every time Flask
+# restarts. That is acceptable because the
+# development MFA store below is also entirely
+# in memory.
+
 app.config[
     "MARKS_AUTH_MFA_ENCRYPTION_KEY"
-] = Fernet.generate_key().decode("utf-8")
+] = (
+    Fernet.generate_key().decode(
+        "utf-8"
+    )
+)
 
 app.config[
     "MARKS_AUTH_RECOVERY_CODE_KEY"
@@ -260,13 +324,51 @@ app.config[
 ] = 300
 
 
+# --------------------------------------------------
+# WebAuthn / Passkey configuration
+# --------------------------------------------------
+
+app.config[
+    "MARKS_AUTH_WEBAUTHN_ENABLED"
+] = True
+
+# IMPORTANT:
+# Access the frontend using:
+#
+#     http://localhost:5173
+#
+# while testing passkeys.
+#
+# WebAuthn RP IDs and origins are intentionally
+# strict. Do not switch between localhost and
+# 127.0.0.1 during the ceremony.
+
+app.config[
+    "MARKS_AUTH_WEBAUTHN_RP_ID"
+] = "localhost"
+
+app.config[
+    "MARKS_AUTH_WEBAUTHN_RP_NAME"
+] = "MARKS Toolkit Development"
+
+app.config[
+    "MARKS_AUTH_WEBAUTHN_ORIGIN"
+] = "http://localhost:5173"
+
+app.config[
+    "MARKS_AUTH_WEBAUTHN_CHALLENGE_TTL"
+] = 300
+
 
 # --------------------------------------------------
 # Development stores
 # --------------------------------------------------
 
 user_store = TestUserStore()
+
 mfa_store = MemoryMFAStore()
+
+passkey_store = MemoryPasskeyStore()
 
 
 # --------------------------------------------------
@@ -279,11 +381,13 @@ auth_kit.init_app(
     app,
     user_store=user_store,
     captcha_provider=captcha_provider,
-    mfa_store=mfa_store
+    mfa_store=mfa_store,
+    passkey_store=passkey_store,
 )
 
-state = app.extensions["marks_auth"]
-
+state = app.extensions[
+    "marks_auth"
+]
 
 
 # --------------------------------------------------
@@ -291,15 +395,18 @@ state = app.extensions["marks_auth"]
 # --------------------------------------------------
 
 test_hash = (
-    state.password_service.hash_password(
+    state.password_service
+    .hash_password(
         "TestingPassword123!"
     )
 )
 
-test_user = user_store.create_user(
-    email="mark@example.com",
-    username="Mark",
-    password_hash=test_hash
+test_user = (
+    user_store.create_user(
+        email="mark@example.com",
+        username="Mark",
+        password_hash=test_hash,
+    )
 )
 
 
@@ -308,4 +415,6 @@ test_user = user_store.create_user(
 # --------------------------------------------------
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(
+        debug=True
+    )

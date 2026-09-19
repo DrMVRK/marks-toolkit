@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    JSON,
     LargeBinary,
     String,
 )
@@ -136,6 +137,12 @@ class AuthPasskeyModel(AuthBase):
         index=True,
     )
 
+    user_handle: Mapped[bytes] = mapped_column(
+        LargeBinary,
+        nullable=False,
+        index=True,
+    )
+
     credential_id: Mapped[bytes] = mapped_column(
         LargeBinary,
         unique=True,
@@ -156,6 +163,12 @@ class AuthPasskeyModel(AuthBase):
     name: Mapped[str | None] = mapped_column(
         String(100),
         nullable=True,
+    )
+
+    transports: Mapped[list[str]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
     )
 
     created_at: Mapped[datetime] = mapped_column(

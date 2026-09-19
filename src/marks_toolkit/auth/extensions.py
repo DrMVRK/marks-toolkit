@@ -28,6 +28,10 @@ from .mfa_challenge import (
 from .mfa_challenge_store import (
     MemoryMFAChallengeStore,
 )
+from .passkeys import PasskeyService
+from .webauthn_challenge_store import (
+    MemoryWebAuthnChallengeStore,
+)
 
 from flask_login import LoginManager
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -45,6 +49,7 @@ class AuthKit:
         mailer=None,
         captcha_provider=None,
         mfa_store=None,
+        passkey_store=None,
     ):
         if not isinstance(user_store, UserStore):
             raise TypeError(
@@ -112,6 +117,92 @@ class AuthKit:
                 "set "
                 "MARKS_AUTH_ALLOW_INSECURE_RESET_URL=True."
             )
+
+        # -------------------------------------------------
+        # WebAuthn / Passkey configuration
+        # -------------------------------------------------
+
+        if config.webauthn_enabled:
+            if not config.webauthn_rp_id:
+                raise RuntimeError(
+                    "WebAuthn is enabled but "
+                    "MARKS_AUTH_WEBAUTHN_RP_ID "
+                    "is not configured."
+                )
+
+            if not config.webauthn_rp_name:
+                raise RuntimeError(
+                    "WebAuthn is enabled but "
+                    "MARKS_AUTH_WEBAUTHN_RP_NAME "
+                    "is not configured."
+                )
+
+            if not config.webauthn_origin:
+                raise RuntimeError(
+                    "WebAuthn is enabled but "
+                    "MARKS_AUTH_WEBAUTHN_ORIGIN "
+                    "is not configured."
+                )
+
+            webauthn_origin_parts = urlsplit(
+                config.webauthn_origin
+            )
+
+            if (
+                webauthn_origin_parts.scheme
+                not in ("http", "https")
+                or not webauthn_origin_parts.hostname
+            ):
+                raise RuntimeError(
+                    "MARKS_AUTH_WEBAUTHN_ORIGIN "
+                    "must be an absolute HTTP or HTTPS origin."
+                )
+
+            if (
+                webauthn_origin_parts.username is not None
+                or webauthn_origin_parts.password is not None
+            ):
+                raise RuntimeError(
+                    "MARKS_AUTH_WEBAUTHN_ORIGIN "
+                    "must not contain embedded credentials."
+                )
+
+            if (
+                webauthn_origin_parts.path not in ("", "/")
+                or webauthn_origin_parts.query
+                or webauthn_origin_parts.fragment
+            ):
+                raise RuntimeError(
+                    "MARKS_AUTH_WEBAUTHN_ORIGIN "
+                    "must be an origin only and must not "
+                    "contain a path, query string, or fragment."
+                )
+
+            if (
+                webauthn_origin_parts.scheme != "https"
+                and webauthn_origin_parts.hostname
+                not in ("localhost", "127.0.0.1", "::1")
+            ):
+                raise RuntimeError(
+                    "MARKS_AUTH_WEBAUTHN_ORIGIN must use HTTPS "
+                    "except for local development."
+                )
+            if (
+                "://" in config.webauthn_rp_id
+                or "/" in config.webauthn_rp_id
+            ):
+                raise RuntimeError(
+                    "MARKS_AUTH_WEBAUTHN_RP_ID "
+                    "must be a hostname/domain only."
+                )
+            if (
+                config.webauthn_enabled
+                and passkey_store is None
+            ):
+                raise RuntimeError(
+                    "WebAuthn is enabled but no "
+                    "PasskeyStore was provided."
+                )
         
         if captcha_provider is None:
             raise RuntimeError(
@@ -383,6 +474,31 @@ class AuthKit:
             )
         )
 
+        # -------------------------------------------------
+        # WebAuthn / Passkey services
+        # -------------------------------------------------
+
+        webauthn_challenge_store = None
+        passkey_service = None
+
+        if config.webauthn_enabled:
+            webauthn_challenge_store = (
+                MemoryWebAuthnChallengeStore()
+            )
+
+            passkey_service = PasskeyService(
+                passkey_store=passkey_store,
+                challenge_store=(
+                    webauthn_challenge_store
+                ),
+                rp_id=config.webauthn_rp_id,
+                rp_name=config.webauthn_rp_name,
+                origin=config.webauthn_origin,
+                challenge_ttl=(
+                    config.webauthn_challenge_ttl
+                ),
+            )
+
         risk_service = RiskService(
             security_store=security_store,
             captcha_threshold=(
@@ -447,6 +563,11 @@ class AuthKit:
             mfa_challenge_service=(
                 mfa_challenge_service
             ),
+            passkey_store=passkey_store,
+            webauthn_challenge_store=(
+                webauthn_challenge_store
+            ),
+            passkey_service=passkey_service,
         )
 
         app.extensions["marks_auth"] = state

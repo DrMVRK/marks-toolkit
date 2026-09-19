@@ -238,3 +238,40 @@ class AuthConfig:
             "MARKS_AUTH_RECOVERY_CODE_GENERATION_WINDOW",
             300,
         )
+
+        # ========================================================
+        # WEBAUTHN / PASSKEYS
+        # ========================================================
+
+        self.webauthn_enabled = app.config.get(
+            "MARKS_AUTH_WEBAUTHN_ENABLED",
+            False,
+        )
+
+        self.webauthn_rp_id = app.config.get(
+            "MARKS_AUTH_WEBAUTHN_RP_ID"
+        )
+
+        self.webauthn_rp_name = app.config.get(
+            "MARKS_AUTH_WEBAUTHN_RP_NAME",
+            "MARKS Toolkit",
+        )
+
+        self.webauthn_origin = app.config.get(
+            "MARKS_AUTH_WEBAUTHN_ORIGIN"
+        )
+
+        self.webauthn_challenge_ttl = app.config.get(
+            "MARKS_AUTH_WEBAUTHN_CHALLENGE_TTL",
+            300,
+        )
+
+        self.passkey_enrollment_limit = app.config.get(
+            "MARKS_AUTH_PASSKEY_ENROLLMENT_LIMIT",
+            5,
+        )
+
+        self.passkey_enrollment_window = app.config.get(
+            "MARKS_AUTH_PASSKEY_ENROLLMENT_WINDOW",
+            300,
+        )
