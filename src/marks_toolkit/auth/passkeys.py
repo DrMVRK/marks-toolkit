@@ -483,14 +483,27 @@ class PasskeyService:
                 "Passkey signature counter did not advance."
             )
 
-        self.passkey_store.update_usage(
-            stored_credential.credential_id,
-            sign_count=new_sign_count,
-            last_used_at=(
-                datetime.now(
-                    timezone.utc
-                )
-            ),
+        updated = (
+            self.passkey_store.update_usage(
+                stored_credential.credential_id,
+                expected_sign_count=(
+                    stored_credential.sign_count
+                ),
+                sign_count=(
+                    new_sign_count
+                ),
+                last_used_at=(
+                    datetime.now(
+                        timezone.utc
+                    )
+                ),
+            )
         )
+
+        if not updated:
+            raise ValueError(
+                "Passkey credential changed "
+                "during authentication."
+            )
 
         return stored_credential.user_id

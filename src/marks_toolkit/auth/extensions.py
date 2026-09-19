@@ -31,6 +31,7 @@ from .mfa_challenge_store import (
 from .passkeys import PasskeyService
 from .webauthn_challenge_store import (
     MemoryWebAuthnChallengeStore,
+    RedisWebAuthnChallengeStore,
 )
 
 from flask_login import LoginManager
@@ -482,21 +483,45 @@ class AuthKit:
         passkey_service = None
 
         if config.webauthn_enabled:
-            webauthn_challenge_store = (
-                MemoryWebAuthnChallengeStore()
-            )
+            if (
+                config.security_store_backend
+                == "redis"
+            ):
+                webauthn_challenge_store = (
+                    RedisWebAuthnChallengeStore(
+                        redis_url=(
+                            config.redis_url
+                        )
+                    )
+                )
 
-            passkey_service = PasskeyService(
-                passkey_store=passkey_store,
-                challenge_store=(
-                    webauthn_challenge_store
-                ),
-                rp_id=config.webauthn_rp_id,
-                rp_name=config.webauthn_rp_name,
-                origin=config.webauthn_origin,
-                challenge_ttl=(
-                    config.webauthn_challenge_ttl
-                ),
+            else:
+                webauthn_challenge_store = (
+                    MemoryWebAuthnChallengeStore()
+                )
+
+            passkey_service = (
+                PasskeyService(
+                    passkey_store=(
+                        passkey_store
+                    ),
+                    challenge_store=(
+                        webauthn_challenge_store
+                    ),
+                    rp_id=(
+                        config.webauthn_rp_id
+                    ),
+                    rp_name=(
+                        config.webauthn_rp_name
+                    ),
+                    origin=(
+                        config.webauthn_origin
+                    ),
+                    challenge_ttl=(
+                        config
+                        .webauthn_challenge_ttl
+                    ),
+                )
             )
 
         risk_service = RiskService(

@@ -1,6 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import delete, select
+from sqlalchemy import (
+    delete,
+    select,
+    update,
+)
 from sqlalchemy.exc import IntegrityError
 
 from .passkey_store import (
@@ -105,15 +109,17 @@ class SQLAlchemyPasskeyStore(PasskeyStore):
             try:
                 session.commit()
 
-            except IntegrityError:
+            except IntegrityError as error:
                 session.rollback()
 
                 raise ValueError(
                     "Passkey credential "
                     "already exists."
-                )
+                ) from error
 
-            session.refresh(model)
+            session.refresh(
+                model
+            )
 
             return self._to_credential(
                 model
@@ -134,12 +140,15 @@ class SQLAlchemyPasskeyStore(PasskeyStore):
             return None
 
         with self.session_factory() as session:
-            statement = select(
-                AuthPasskeyModel
-            ).where(
-                AuthPasskeyModel
-                .credential_id
-                == credential_id
+            statement = (
+                select(
+                    AuthPasskeyModel
+                )
+                .where(
+                    AuthPasskeyModel
+                        .credential_id
+                    == credential_id
+                )
             )
 
             model = session.scalar(
@@ -197,28 +206,33 @@ class SQLAlchemyPasskeyStore(PasskeyStore):
         name: str | None,
     ) -> bool:
         with self.session_factory() as session:
-            statement = select(
-                AuthPasskeyModel
-            ).where(
-                AuthPasskeyModel.user_id
-                == user_id,
-                AuthPasskeyModel
-                    .credential_id
-                == credential_id,
+            statement = (
+                update(
+                    AuthPasskeyModel
+                )
+                .where(
+                    AuthPasskeyModel.user_id
+                    == user_id,
+                    AuthPasskeyModel
+                        .credential_id
+                    == credential_id,
+                )
+                .values(
+                    name=name
+                )
             )
 
-            model = session.scalar(
+            result = session.execute(
                 statement
             )
 
-            if model is None:
-                return False
-
-            model.name = name
+            updated = (
+                result.rowcount or 0
+            ) > 0
 
             session.commit()
 
-            return True
+            return updated
 
     # ============================================================
     # USAGE UPDATE
@@ -228,37 +242,58 @@ class SQLAlchemyPasskeyStore(PasskeyStore):
         self,
         credential_id: bytes,
         *,
+        expected_sign_count: int,
         sign_count: int,
         last_used_at: datetime,
-    ) -> None:
+    ) -> bool:
+        """
+        Compare-and-set the WebAuthn signature
+        counter.
+
+        The UPDATE succeeds only when the
+        database still contains the counter
+        value used during assertion
+        verification.
+        """
+
         with self.session_factory() as session:
-            statement = select(
-                AuthPasskeyModel
-            ).where(
-                AuthPasskeyModel
-                    .credential_id
-                == credential_id
+            statement = (
+                update(
+                    AuthPasskeyModel
+                )
+                .where(
+                    AuthPasskeyModel
+                        .credential_id
+                    == credential_id,
+
+                    AuthPasskeyModel
+                        .sign_count
+                    == expected_sign_count,
+                )
+                .values(
+                    sign_count=sign_count,
+                    last_used_at=(
+                        last_used_at
+                    ),
+                )
             )
 
-            model = session.scalar(
+            result = session.execute(
                 statement
             )
 
-            if model is None:
-                raise KeyError(
-                    "Passkey credential "
-                    "not found."
-                )
+            updated = (
+                result.rowcount or 0
+            ) == 1
 
-            model.sign_count = (
-                sign_count
-            )
+            if not updated:
+                session.rollback()
 
-            model.last_used_at = (
-                last_used_at
-            )
+                return False
 
             session.commit()
+
+            return True
 
     # ============================================================
     # DELETE

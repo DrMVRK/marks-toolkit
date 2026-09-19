@@ -1,7 +1,15 @@
-import { useState } from "react";
+import {
+    useEffect,
+    useRef,
+    useState
+} from "react";
 
 import { useAuth } from "./AuthProvider";
 import CaptchaChallenge from "./CaptchaChallenge";
+
+
+const REMEMBERED_ACCOUNT_KEY =
+    "marks_auth_remembered_account";
 
 
 export default function LoginView({
@@ -46,6 +54,147 @@ export default function LoginView({
         setCaptchaToken
     ] = useState(null);
 
+    const [
+        rememberedAccount,
+        setRememberedAccount
+    ] = useState(null);
+
+    const [
+        showPasswordLogin,
+        setShowPasswordLogin
+    ] = useState(false);
+
+    const [
+        conditionalAvailable,
+        setConditionalAvailable
+    ] = useState(false);
+
+    const conditionalAbortControllerRef =
+        useRef(null);
+
+    const conditionalInProgressRef =
+        useRef(false);
+
+    const rememberRef =
+        useRef(false);
+
+
+    useEffect(() => {
+        rememberRef.current =
+            remember;
+    }, [remember]);
+
+
+    useEffect(() => {
+        try {
+            const stored =
+                localStorage.getItem(
+                    REMEMBERED_ACCOUNT_KEY
+                );
+
+            if (stored) {
+                const parsed =
+                    JSON.parse(stored);
+
+                if (
+                    parsed
+                    && typeof parsed
+                        === "object"
+                ) {
+                    const username =
+                        typeof parsed.username
+                        === "string"
+                            ? parsed.username
+                            : "";
+
+                    const email =
+                        typeof parsed.email
+                        === "string"
+                            ? parsed.email
+                            : "";
+
+                    if (
+                        username
+                        || email
+                    ) {
+                        setRememberedAccount({
+                            username,
+                            email
+                        });
+
+                        setRemember(true);
+
+                    } else {
+                        localStorage.removeItem(
+                            REMEMBERED_ACCOUNT_KEY
+                        );
+                    }
+                }
+            }
+
+        } catch (storageError) {
+            console.warn(
+                "Unable to read remembered account:",
+                storageError
+            );
+        }
+
+
+        async function detectConditionalUI() {
+            try {
+                if (
+                    typeof window
+                        .PublicKeyCredential
+                    === "undefined"
+                ) {
+                    return;
+                }
+
+                if (
+                    typeof PublicKeyCredential
+                        .isConditionalMediationAvailable
+                    !== "function"
+                ) {
+                    return;
+                }
+
+                const available =
+                    await PublicKeyCredential
+                        .isConditionalMediationAvailable();
+
+                setConditionalAvailable(
+                    available === true
+                );
+
+            } catch (detectionError) {
+                console.warn(
+                    "Unable to detect conditional passkey support:",
+                    detectionError
+                );
+            }
+        }
+
+        detectConditionalUI();
+
+
+        return () => {
+            if (
+                conditionalAbortControllerRef
+                    .current
+            ) {
+                conditionalAbortControllerRef
+                    .current
+                    .abort();
+
+                conditionalAbortControllerRef
+                    .current = null;
+            }
+
+            conditionalInProgressRef
+                .current = false;
+        };
+    }, []);
+
 
     async function handleSubmit(
         event
@@ -59,6 +208,8 @@ export default function LoginView({
         ) {
             return;
         }
+
+        abortConditionalLogin();
 
         setLoading(true);
         setError(null);
@@ -128,7 +279,9 @@ export default function LoginView({
             );
 
             setError({
-                code: "NETWORK_ERROR",
+                code:
+                    "NETWORK_ERROR",
+
                 message:
                     "Unable to contact the authentication server."
             });
@@ -136,6 +289,155 @@ export default function LoginView({
         } finally {
             setLoading(false);
         }
+    }
+
+
+    function abortConditionalLogin() {
+        if (
+            conditionalAbortControllerRef
+                .current
+        ) {
+            conditionalAbortControllerRef
+                .current
+                .abort();
+
+            conditionalAbortControllerRef
+                .current = null;
+        }
+
+        conditionalInProgressRef
+            .current = false;
+    }
+
+
+    function saveRememberedAccount(
+        account
+    ) {
+        try {
+            localStorage.setItem(
+                REMEMBERED_ACCOUNT_KEY,
+                JSON.stringify(
+                    account
+                )
+            );
+
+            setRememberedAccount(
+                account
+            );
+
+        } catch (storageError) {
+            console.warn(
+                "Unable to remember account hint:",
+                storageError
+            );
+        }
+    }
+
+
+    function clearRememberedAccount() {
+        try {
+            localStorage.removeItem(
+                REMEMBERED_ACCOUNT_KEY
+            );
+
+        } catch (storageError) {
+            console.warn(
+                "Unable to clear remembered account:",
+                storageError
+            );
+        }
+
+        setRememberedAccount(
+            null
+        );
+
+        setShowPasswordLogin(
+            false
+        );
+
+        setIdentity("");
+        setPassword("");
+        setRemember(false);
+        setError(null);
+    }
+
+
+    async function finishPasskeyAuthentication({
+        challengeId,
+        credential,
+        shouldRemember
+    }) {
+        if (
+            typeof credential
+                .toJSON
+            !== "function"
+        ) {
+            throw new Error(
+                "Passkey response cannot be serialized."
+            );
+        }
+
+        const serialized =
+            credential.toJSON();
+
+        const finishResponse =
+            await client
+                .finishPasskeyLogin({
+                    challengeId,
+                    credential:
+                        serialized
+                });
+
+        if (!finishResponse.ok) {
+            return {
+                ok: false,
+                error:
+                    finishResponse.error
+                    || {
+                        message:
+                            "Passkey authentication failed."
+                    }
+            };
+        }
+
+        if (shouldRemember) {
+            saveRememberedAccount({
+                username:
+                    finishResponse
+                        .data
+                        .username,
+
+                email:
+                    finishResponse
+                        .data
+                        .email
+            });
+
+        } else {
+            try {
+                localStorage.removeItem(
+                    REMEMBERED_ACCOUNT_KEY
+                );
+
+                setRememberedAccount(
+                    null
+                );
+
+            } catch (storageError) {
+                console.warn(
+                    "Unable to clear account hint:",
+                    storageError
+                );
+            }
+        }
+
+        handleLogin(
+            finishResponse.data
+        );
+
+        return {
+            ok: true
+        };
     }
 
 
@@ -147,6 +449,15 @@ export default function LoginView({
         ) {
             return;
         }
+
+        /*
+         * An explicit WebAuthn request should
+         * replace any pending conditional
+         * request. Browsers generally do not
+         * want competing navigator.credentials
+         * requests.
+         */
+        abortConditionalLogin();
 
         setPasskeyLoading(true);
         setError(null);
@@ -235,90 +546,19 @@ export default function LoginView({
                 return;
             }
 
-            if (
-                typeof credential
-                    .toJSON
-                !== "function"
-            ) {
-                setError({
-                    code:
-                        "WEBAUTHN_UNAVAILABLE",
-
-                    message:
-                        "This browser cannot serialize the passkey response."
+            const result =
+                await finishPasskeyAuthentication({
+                    challengeId,
+                    credential,
+                    shouldRemember:
+                        remember
                 });
 
-                return;
-            }
-
-            const serialized =
-                credential.toJSON();
-
-            const finishResponse =
-                await client
-                    .finishPasskeyLogin({
-                        challengeId,
-                        credential:
-                            serialized
-                    });
-
-            if (!finishResponse.ok) {
+            if (!result.ok) {
                 setError(
-                    finishResponse.error
-                    || {
-                        message:
-                            "Passkey authentication failed."
-                    }
+                    result.error
                 );
-
-                return;
             }
-
-            if (remember) {
-                try {
-                    localStorage.setItem(
-                        "marks_auth_remembered_account",
-                        JSON.stringify({
-                            username:
-                                finishResponse
-                                    .data
-                                    .username,
-
-                            email:
-                                finishResponse
-                                    .data
-                                    .email
-                        })
-                    );
-
-                } catch (
-                    storageError
-                ) {
-                    console.warn(
-                        "Unable to remember account hint:",
-                        storageError
-                    );
-                }
-
-            } else {
-                try {
-                    localStorage.removeItem(
-                        "marks_auth_remembered_account"
-                    );
-
-                } catch (
-                    storageError
-                ) {
-                    console.warn(
-                        "Unable to clear account hint:",
-                        storageError
-                    );
-                }
-            }
-
-            handleLogin(
-                finishResponse.data
-            );
 
         } catch (requestError) {
             console.error(
@@ -341,8 +581,17 @@ export default function LoginView({
                 return;
             }
 
+            if (
+                requestError?.name
+                === "AbortError"
+            ) {
+                return;
+            }
+
             setError({
-                code: "PASSKEY_ERROR",
+                code:
+                    "PASSKEY_ERROR",
+
                 message:
                     "Unable to sign in with a passkey."
             });
@@ -355,10 +604,300 @@ export default function LoginView({
     }
 
 
+    async function startConditionalPasskeyLogin() {
+        if (
+            !ready
+            || !passkeysAvailable
+            || !conditionalAvailable
+            || conditionalInProgressRef
+                .current
+            || loading
+            || passkeyLoading
+        ) {
+            return;
+        }
+
+        if (
+            typeof navigator
+                .credentials?.get
+            !== "function"
+            || typeof PublicKeyCredential
+                .parseRequestOptionsFromJSON
+                !== "function"
+        ) {
+            return;
+        }
+
+        conditionalInProgressRef
+            .current = true;
+
+        const abortController =
+            new AbortController();
+
+        conditionalAbortControllerRef
+            .current =
+                abortController;
+
+        try {
+            const beginResponse =
+                await client
+                    .beginPasskeyLogin();
+
+            if (!beginResponse.ok) {
+                /*
+                 * Conditional UI is optional.
+                 * Do not interrupt normal
+                 * password login if starting it
+                 * fails.
+                 */
+                return;
+            }
+
+            const {
+                challenge_id:
+                    challengeId,
+
+                options
+            } = beginResponse.data;
+
+            const publicKey =
+                PublicKeyCredential
+                    .parseRequestOptionsFromJSON(
+                        options
+                    );
+
+            const credential =
+                await navigator
+                    .credentials
+                    .get({
+                        publicKey,
+
+                        mediation:
+                            "conditional",
+
+                        signal:
+                            abortController
+                                .signal
+                    });
+
+            if (!credential) {
+                return;
+            }
+
+            const result =
+                await finishPasskeyAuthentication({
+                    challengeId,
+                    credential,
+
+                    shouldRemember:
+                        rememberRef.current
+                });
+
+            if (!result.ok) {
+                setError(
+                    result.error
+                );
+            }
+
+        } catch (requestError) {
+            /*
+             * Cancellation is normal for
+             * conditional mediation and should
+             * not show an error to the user.
+             */
+            if (
+                requestError?.name
+                    === "AbortError"
+                || requestError?.name
+                    === "NotAllowedError"
+            ) {
+                return;
+            }
+
+            console.warn(
+                "Conditional passkey login failed:",
+                requestError
+            );
+
+        } finally {
+            if (
+                conditionalAbortControllerRef
+                    .current
+                === abortController
+            ) {
+                conditionalAbortControllerRef
+                    .current = null;
+            }
+
+            conditionalInProgressRef
+                .current = false;
+        }
+    }
+
+
+    function useRememberedPassword() {
+        abortConditionalLogin();
+
+        const rememberedIdentity =
+            rememberedAccount?.email
+            || rememberedAccount?.username
+            || "";
+
+        setIdentity(
+            rememberedIdentity
+        );
+
+        setPassword("");
+
+        setRemember(true);
+
+        setError(null);
+
+        setShowPasswordLogin(
+            true
+        );
+    }
+
+
+    function useDifferentAccount() {
+        abortConditionalLogin();
+
+        setIdentity("");
+        setPassword("");
+        setRemember(false);
+        setError(null);
+
+        setCaptchaRequired(
+            false
+        );
+
+        setCaptchaToken(
+            null
+        );
+
+        setShowPasswordLogin(
+            true
+        );
+    }
+
+
     const passkeysAvailable = (
         config?.passkeys_available
         === true
     );
+
+
+    const rememberedName = (
+        rememberedAccount?.username
+        || rememberedAccount?.email
+        || "there"
+    );
+
+
+    if (
+        rememberedAccount
+        && !showPasswordLogin
+    ) {
+        return (
+            <div className="marks-auth-login">
+                <h2>
+                    Welcome back,{" "}
+                    {rememberedName}
+                </h2>
+
+                {rememberedAccount.email && (
+                    <p>
+                        {
+                            rememberedAccount
+                                .email
+                        }
+                    </p>
+                )}
+
+                {error && (
+                    <p className="marks-auth-error">
+                        {
+                            error.message
+                            || "An authentication error occurred."
+                        }
+                    </p>
+                )}
+
+                {passkeysAvailable && (
+                    <button
+                        type="button"
+                        className={
+                            "marks-auth-primary-button"
+                        }
+                        onClick={
+                            handlePasskeyLogin
+                        }
+                        disabled={
+                            !ready
+                            || loading
+                            || passkeyLoading
+                        }
+                    >
+                        {
+                            passkeyLoading
+                                ? "Waiting for passkey..."
+                                : "Continue with passkey"
+                        }
+                    </button>
+                )}
+
+                <div className="marks-auth-actions">
+                    <button
+                        type="button"
+                        className={
+                            "marks-auth-secondary"
+                        }
+                        onClick={
+                            useRememberedPassword
+                        }
+                        disabled={
+                            loading
+                            || passkeyLoading
+                        }
+                    >
+                        Use password instead
+                    </button>
+
+                    <button
+                        type="button"
+                        className={
+                            "marks-auth-secondary"
+                        }
+                        onClick={
+                            useDifferentAccount
+                        }
+                        disabled={
+                            loading
+                            || passkeyLoading
+                        }
+                    >
+                        Sign in with a different account
+                    </button>
+
+                    <button
+                        type="button"
+                        className={
+                            "marks-auth-secondary"
+                        }
+                        onClick={
+                            clearRememberedAccount
+                        }
+                        disabled={
+                            loading
+                            || passkeyLoading
+                        }
+                    >
+                        Forget this account
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
 
     return (
@@ -377,6 +916,9 @@ export default function LoginView({
                     setIdentity(
                         event.target.value
                     )
+                }
+                onFocus={
+                    startConditionalPasskeyLogin
                 }
                 autoComplete={
                     "username webauthn"
@@ -481,11 +1023,7 @@ export default function LoginView({
 
             {passkeysAvailable && (
                 <>
-                    <div
-                        className={
-                            "marks-auth-divider"
-                        }
-                    >
+                    <div className="marks-auth-divider">
                         <span>
                             or
                         </span>
@@ -512,6 +1050,25 @@ export default function LoginView({
                         }
                     </button>
                 </>
+            )}
+
+            {rememberedAccount && (
+                <div className="marks-auth-actions">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            abortConditionalLogin();
+
+                            setShowPasswordLogin(
+                                false
+                            );
+
+                            setError(null);
+                        }}
+                    >
+                        Back to remembered account
+                    </button>
+                </div>
             )}
 
             <div className="marks-auth-actions">

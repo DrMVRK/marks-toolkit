@@ -1,3 +1,73 @@
+:root {
+    --marks-auth-font:
+        -apple-system,
+        BlinkMacSystemFont,
+        "SF Pro Text",
+        "SF Pro Display",
+        "Segoe UI",
+        sans-serif;
+
+    --marks-auth-bg: rgba(255, 255, 255, 0.82);
+    --marks-auth-bg-solid: #ffffff;
+    --marks-auth-bg-soft: #f5f5f7;
+    --marks-auth-bg-muted: #fafafc;
+
+    --marks-auth-text: #1d1d1f;
+    --marks-auth-text-muted: #6e6e73;
+    --marks-auth-text-soft: #8e8e93;
+
+    --marks-auth-border: rgba(0, 0, 0, 0.08);
+    --marks-auth-border-strong: rgba(0, 0, 0, 0.12);
+
+    --marks-auth-primary: #1d1d1f;
+    --marks-auth-primary-hover: #000000;
+    --marks-auth-primary-text: #ffffff;
+
+    --marks-auth-secondary-bg: #f5f5f7;
+    --marks-auth-secondary-hover: #ebebef;
+
+    --marks-auth-link: #0071e3;
+    --marks-auth-link-hover: #0058b0;
+
+    --marks-auth-success-bg: #eefbf1;
+    --marks-auth-success-border: #cdeed6;
+    --marks-auth-success-text: #1d6f42;
+
+    --marks-auth-danger-bg: #fff2f2;
+    --marks-auth-danger-border: #ffd7d7;
+    --marks-auth-danger-text: #b3261e;
+
+    --marks-auth-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.12),
+        0 2px 10px rgba(0, 0, 0, 0.06);
+
+    --marks-auth-shadow-soft:
+        0 4px 16px rgba(0, 0, 0, 0.08);
+
+    --marks-auth-radius-lg: 24px;
+    --marks-auth-radius-md: 16px;
+    --marks-auth-radius-sm: 12px;
+    --marks-auth-radius-xs: 10px;
+}
+
+
+/* ============================================================
+   Base
+============================================================ */
+
+.marks-auth-overlay,
+.marks-auth-modal,
+.marks-auth-view,
+.marks-auth-reauth-dialog,
+.marks-auth-mfa-settings {
+    font-family: var(--marks-auth-font);
+}
+
+
+/* ============================================================
+   Overlay
+============================================================ */
+
 .marks-auth-overlay {
     position: fixed;
     inset: 0;
@@ -6,324 +76,494 @@
     align-items: center;
     justify-content: center;
 
-    padding: 20px;
+    padding: 24px;
 
-    background: rgba(0, 0, 0, 0.65);
+    background:
+        rgba(20, 20, 22, 0.32);
+
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
 
     z-index: 1000;
 }
 
 
-/* -----------------------------
-   Modal container
------------------------------ */
+/* ============================================================
+   Main modal
+============================================================ */
 
 .marks-auth-modal {
     position: relative;
 
     width: 100%;
-    max-width: 420px;
+    max-width: 440px;
+    max-height: calc(100vh - 48px);
 
-    padding: 32px;
+    padding: 32px 28px;
 
     box-sizing: border-box;
+    overflow-y: auto;
 
-    background: #ffffff;
-    color: #1f2937;
+    background: var(--marks-auth-bg);
+    color: var(--marks-auth-text);
 
-    border: 1px solid #d1d5db;
-    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: var(--marks-auth-radius-lg);
 
-    box-shadow:
-        0 20px 40px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--marks-auth-shadow);
+
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
 }
 
 
-/* -----------------------------
+/* ============================================================
    Close button
------------------------------ */
+============================================================ */
 
 .marks-auth-close {
     position: absolute;
+    top: 14px;
+    right: 14px;
 
-    top: 12px;
-    right: 12px;
+    width: 34px;
+    height: 34px;
 
     display: flex;
     align-items: center;
     justify-content: center;
 
-    width: 32px;
-    height: 32px;
-
     padding: 0;
 
     border: none;
-    border-radius: 6px;
+    border-radius: 999px;
 
-    background: transparent;
-    color: #6b7280;
+    background: rgba(0, 0, 0, 0.06);
+    color: #6e6e73;
 
-    font-size: 24px;
+    font-size: 22px;
     line-height: 1;
 
     cursor: pointer;
+
+    transition:
+        background 0.18s ease,
+        color 0.18s ease,
+        transform 0.18s ease;
 }
 
 .marks-auth-close:hover {
-    background: #f3f4f6;
-    color: #111827;
+    background: rgba(0, 0, 0, 0.1);
+    color: var(--marks-auth-text);
+    transform: scale(1.03);
 }
 
 
-/* -----------------------------
-   Shared form layout
------------------------------ */
+/* ============================================================
+   Layout
+============================================================ */
 
 .marks-auth-modal form,
-.marks-auth-view {
+.marks-auth-view,
+.marks-auth-login {
     display: flex;
     flex-direction: column;
-
     gap: 16px;
 }
 
+.marks-auth-modal h2,
+.marks-auth-modal h3 {
+    margin: 0;
+    color: var(--marks-auth-text);
+    letter-spacing: -0.02em;
+}
+
 .marks-auth-modal h2 {
-    margin: 0 0 8px 0;
-
-    color: #111827;
-
+    font-size: 1.8rem;
+    font-weight: 650;
     text-align: center;
 }
 
+.marks-auth-modal h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
 .marks-auth-modal p {
-    color: #4b5563;
+    margin: 0;
+    color: var(--marks-auth-text-muted);
+    line-height: 1.5;
+}
+
+.marks-auth-login {
+    text-align: center;
+}
+
+.marks-auth-login > p {
+    color: var(--marks-auth-text-muted);
+    font-size: 0.96rem;
 }
 
 
-/* -----------------------------
+/* ============================================================
    Inputs
------------------------------ */
+============================================================ */
 
 .marks-auth-modal input[type="text"],
 .marks-auth-modal input[type="email"],
 .marks-auth-modal input[type="password"] {
     width: 100%;
 
-    padding: 12px 14px;
+    padding: 14px 16px;
 
     box-sizing: border-box;
 
-    background: #ffffff;
-    color: #111827;
+    background: rgba(245, 245, 247, 0.96);
+    color: var(--marks-auth-text);
 
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
+    border: 1px solid transparent;
+    border-radius: 14px;
 
     font-size: 16px;
+    font-family: inherit;
 
     outline: none;
+
+    transition:
+        background 0.16s ease,
+        border-color 0.16s ease,
+        box-shadow 0.16s ease,
+        transform 0.16s ease;
 }
 
 .marks-auth-modal input::placeholder {
-    color: #9ca3af;
+    color: #8e8e93;
 }
 
 .marks-auth-modal input[type="text"]:focus,
 .marks-auth-modal input[type="email"]:focus,
 .marks-auth-modal input[type="password"]:focus {
-    border-color: #2563eb;
-
+    background: #ffffff;
+    border-color: rgba(0, 113, 227, 0.28);
     box-shadow:
-        0 0 0 3px rgba(37, 99, 235, 0.15);
+        0 0 0 4px rgba(0, 113, 227, 0.12);
 }
 
 
-/* -----------------------------
-   Checkbox row
------------------------------ */
+/* ============================================================
+   Labels / checkbox
+============================================================ */
 
 .marks-auth-modal label {
     display: flex;
     align-items: center;
+    gap: 10px;
 
-    gap: 8px;
-
-    color: #374151;
-
+    color: var(--marks-auth-text-muted);
     font-size: 14px;
 }
 
 .marks-auth-modal input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
     margin: 0;
+    accent-color: #1d1d1f;
 }
 
 
-/* -----------------------------
-   Primary buttons
------------------------------ */
+/* ============================================================
+   Buttons
+============================================================ */
 
-.marks-auth-modal button[type="submit"] {
+.marks-auth-modal button {
+    font-family: inherit;
+}
+
+.marks-auth-modal button[type="submit"],
+.marks-auth-primary-button {
     width: 100%;
 
-    padding: 12px 14px;
+    padding: 13px 16px;
 
     border: none;
-    border-radius: 8px;
+    border-radius: 999px;
 
-    background: #2563eb;
-    color: #ffffff;
+    background: var(--marks-auth-primary);
+    color: var(--marks-auth-primary-text);
 
     font-size: 15px;
     font-weight: 600;
+    letter-spacing: -0.01em;
 
     cursor: pointer;
+
+    transition:
+        background 0.18s ease,
+        opacity 0.18s ease,
+        transform 0.18s ease,
+        box-shadow 0.18s ease;
 }
 
-.marks-auth-modal button[type="submit"]:hover:not(:disabled) {
-    background: #1d4ed8;
+.marks-auth-modal button[type="submit"]:hover:not(:disabled),
+.marks-auth-primary-button:hover:not(:disabled) {
+    background: var(--marks-auth-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
 }
 
-.marks-auth-modal button[type="submit"]:disabled {
-    background: #93c5fd;
-
+.marks-auth-modal button:disabled {
+    opacity: 0.55;
     cursor: not-allowed;
-    opacity: 0.7;
 }
 
 
-/* -----------------------------
-   Secondary auth actions
------------------------------ */
+/* ============================================================
+   Secondary buttons / action buttons
+============================================================ */
 
-.marks-auth-actions {
-    display: flex;
-    flex-direction: column;
+.marks-auth-secondary,
+.marks-auth-actions button,
+.marks-auth-passkey-item button {
+    padding: 11px 14px;
 
-    gap: 8px;
-}
+    border: 1px solid var(--marks-auth-border);
+    border-radius: 999px;
 
-.marks-auth-actions button {
-    width: 100%;
-
-    padding: 10px 12px;
-
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-
-    background: #f9fafb;
-    color: #374151;
+    background: rgba(245, 245, 247, 0.92);
+    color: var(--marks-auth-text);
 
     font-size: 14px;
     font-weight: 500;
 
     cursor: pointer;
+
+    transition:
+        background 0.18s ease,
+        border-color 0.18s ease,
+        transform 0.18s ease;
 }
 
-.marks-auth-actions button:hover {
-    background: #f3f4f6;
-    color: #111827;
+.marks-auth-secondary:hover:not(:disabled),
+.marks-auth-actions button:hover:not(:disabled),
+.marks-auth-passkey-item button:hover:not(:disabled) {
+    background: var(--marks-auth-secondary-hover);
+    border-color: var(--marks-auth-border-strong);
+    transform: translateY(-1px);
+}
+
+.marks-auth-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 
-/* -----------------------------
+/* ============================================================
+   Text links / alternate actions
+============================================================ */
+
+.marks-auth-link-button {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--marks-auth-link);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.marks-auth-link-button:hover {
+    color: var(--marks-auth-link-hover);
+    text-decoration: underline;
+}
+
+
+/* ============================================================
+   Divider
+============================================================ */
+
+.marks-auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    margin: 2px 0;
+
+    color: var(--marks-auth-text-soft);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.marks-auth-divider::before,
+.marks-auth-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--marks-auth-border);
+}
+
+
+/* ============================================================
    Status messages
------------------------------ */
+============================================================ */
 
-.marks-auth-error {
+.marks-auth-error,
+.marks-auth-success {
     margin: 0;
+    padding: 12px 14px;
 
-    padding: 10px 12px;
-
-    background: #fef2f2;
-    color: #b91c1c;
-
-    border: 1px solid #fecaca;
-    border-radius: 8px;
+    border-radius: 14px;
 
     font-size: 14px;
+    line-height: 1.45;
     text-align: center;
+}
+
+.marks-auth-error {
+    background: var(--marks-auth-danger-bg);
+    color: var(--marks-auth-danger-text);
+    border: 1px solid var(--marks-auth-danger-border);
 }
 
 .marks-auth-success {
-    margin: 0;
-
-    padding: 10px 12px;
-
-    background: #f0fdf4;
-    color: #166534;
-
-    border: 1px solid #bbf7d0;
-    border-radius: 8px;
-
-    font-size: 14px;
-    text-align: center;
+    background: var(--marks-auth-success-bg);
+    color: var(--marks-auth-success-text);
+    border: 1px solid var(--marks-auth-success-border);
 }
 
+
+/* ============================================================
+   CAPTCHA
+============================================================ */
 
 .marks-auth-captcha {
     display: flex;
     justify-content: center;
-
     width: 100%;
     min-height: 65px;
 }
 
+
+/* ============================================================
+   MFA settings wrapper
+============================================================ */
+
 .marks-auth-mfa-settings {
-    max-width: 520px;
-    padding: 1.25rem;
-    border: 1px solid #d4d4d4;
-    border-radius: 10px;
+    width: 100%;
+    max-width: 640px;
+
+    padding: 26px;
+
+    box-sizing: border-box;
+
+    background: rgba(255, 255, 255, 0.86);
+
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 24px;
+
+    box-shadow: var(--marks-auth-shadow-soft);
+
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
 }
+
+.marks-auth-mfa-settings > h2 {
+    margin-bottom: 18px;
+    text-align: left;
+}
+
+
+/* ============================================================
+   MFA status tiles
+============================================================ */
 
 .marks-auth-mfa-status {
-    margin-bottom: 1rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+
+    margin-bottom: 20px;
 }
 
-.marks-auth-mfa-section {
-    margin-top: 1.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid #d4d4d4;
+.marks-auth-mfa-status p {
+    padding: 14px 12px;
+
+    background: rgba(245, 245, 247, 0.85);
+
+    border: 1px solid var(--marks-auth-border);
+    border-radius: 18px;
+
+    text-align: center;
+    font-size: 13px;
+    color: var(--marks-auth-text-muted);
 }
+
+.marks-auth-mfa-status strong {
+    display: block;
+    margin-top: 6px;
+
+    color: var(--marks-auth-text);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+
+/* ============================================================
+   Sections
+============================================================ */
+
+.marks-auth-mfa-section {
+    margin-top: 22px;
+    padding-top: 20px;
+    border-top: 1px solid var(--marks-auth-border);
+}
+
+.marks-auth-mfa-section:first-of-type {
+    margin-top: 0;
+}
+
+.marks-auth-mfa-section > p {
+    margin-top: 8px;
+    margin-bottom: 14px;
+    font-size: 14px;
+}
+
+
+/* ============================================================
+   TOTP secret / QR
+============================================================ */
 
 .marks-auth-mfa-secret {
     display: block;
-    padding: 0.75rem;
-    margin: 0.75rem 0;
+
+    padding: 14px 16px;
+
+    margin: 14px 0;
+
+    background: rgba(245, 245, 247, 0.92);
+
+    border: 1px solid var(--marks-auth-border);
+    border-radius: 16px;
+
+    color: var(--marks-auth-text);
+    font-size: 13px;
+
     overflow-wrap: anywhere;
-}
-
-.marks-auth-mfa-verify {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 1rem;
-}
-
-.marks-auth-mfa-verify input {
-    flex: 1;
-}
-
-.marks-auth-recovery-codes {
-    margin-top: 1rem;
-}
-
-.marks-auth-recovery-codes ul {
-    padding-left: 1.5rem;
-}
-
-.marks-auth-success {
-    padding: 0.75rem;
-    border-radius: 6px;
 }
 
 .marks-auth-mfa-qr {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 1rem;
-    margin: 1rem 0;
-    background: white;
-    border-radius: 8px;
+
+    padding: 18px;
+    margin: 16px 0;
+
+    background: #ffffff;
+
+    border: 1px solid var(--marks-auth-border);
+    border-radius: 18px;
 }
 
 .marks-auth-mfa-qr svg {
@@ -331,38 +571,278 @@
     height: auto;
 }
 
+
+/* ============================================================
+   Verify row
+============================================================ */
+
+.marks-auth-mfa-verify {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.marks-auth-mfa-verify input {
+    flex: 1;
+}
+
+.marks-auth-mfa-verify button {
+    flex: 0 0 auto;
+}
+
+
+/* ============================================================
+   Recovery codes
+============================================================ */
+
+.marks-auth-recovery-codes {
+    margin-top: 16px;
+    padding: 16px;
+
+    background: rgba(245, 245, 247, 0.9);
+
+    border: 1px solid var(--marks-auth-border);
+    border-radius: 18px;
+}
+
+.marks-auth-recovery-codes ul {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 18px;
+
+    margin: 0;
+    padding-left: 20px;
+}
+
+.marks-auth-recovery-codes li {
+    font-family:
+        ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        Monaco,
+        Consolas,
+        monospace;
+    font-size: 13px;
+    color: var(--marks-auth-text);
+}
+
+
+/* ============================================================
+   Passkey enrollment
+============================================================ */
+
+.marks-auth-passkey-enrollment {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    margin-top: 14px;
+}
+
+
+/* ============================================================
+   Passkey list
+============================================================ */
+
+.marks-auth-passkey-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    margin-top: 16px;
+}
+
+.marks-auth-passkey-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+
+    padding: 18px;
+
+    background: rgba(245, 245, 247, 0.9);
+
+    border: 1px solid var(--marks-auth-border);
+    border-radius: 20px;
+
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.marks-auth-passkey-item > div:first-child {
+    min-width: 0;
+    flex: 1;
+}
+
+.marks-auth-passkey-item strong {
+    display: block;
+    margin-bottom: 6px;
+
+    color: var(--marks-auth-text);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.marks-auth-passkey-item p {
+    margin: 4px 0;
+    color: var(--marks-auth-text-muted);
+    font-size: 12px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.marks-auth-passkey-item .marks-auth-actions {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 104px;
+    gap: 8px;
+}
+
+.marks-auth-passkey-item .marks-auth-actions button {
+    width: auto;
+    font-size: 13px;
+    padding: 9px 12px;
+}
+
+
+/* ============================================================
+   Rename / inline edit
+============================================================ */
+
+.marks-auth-passkey-edit {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 10px;
+    width: 100%;
+}
+
+.marks-auth-passkey-edit input {
+    min-width: 0;
+}
+
+.marks-auth-passkey-edit button {
+    width: auto;
+}
+
+
+/* ============================================================
+   Reauth dialog
+============================================================ */
+
 .marks-auth-reauth-backdrop {
     position: fixed;
     inset: 0;
+
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
-    background: rgba(0, 0, 0, 0.55);
+
+    padding: 18px;
+
+    background: rgba(20, 20, 22, 0.34);
+
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+
     z-index: 10000;
 }
 
 .marks-auth-reauth-dialog {
     width: 100%;
-    max-width: 420px;
-    padding: 1.5rem;
-    background: white;
-    color: #111;
-    border-radius: 10px;
-    box-shadow:
-        0 20px 60px
-        rgba(0, 0, 0, 0.3);
+    max-width: 430px;
+
+    padding: 24px;
+
+    box-sizing: border-box;
+
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--marks-auth-text);
+
+    border: 1px solid rgba(255, 255, 255, 0.62);
+    border-radius: 24px;
+
+    box-shadow: var(--marks-auth-shadow);
+
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+
+.marks-auth-reauth-dialog h3 {
+    margin-bottom: 10px;
 }
 
 .marks-auth-reauth-dialog input {
     width: 100%;
     box-sizing: border-box;
-    margin-top: 0.75rem;
+    margin-top: 12px;
 }
 
 .marks-auth-reauth-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 0.75rem;
-    margin-top: 1rem;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.marks-auth-reauth-actions button {
+    width: auto;
+}
+
+
+/* ============================================================
+   Mobile
+============================================================ */
+
+@media (max-width: 640px) {
+    .marks-auth-overlay {
+        padding: 12px;
+    }
+
+    .marks-auth-modal {
+        max-height: calc(100vh - 24px);
+        padding: 24px 20px;
+        border-radius: 22px;
+    }
+
+    .marks-auth-mfa-settings {
+        padding: 18px;
+        border-radius: 22px;
+    }
+
+    .marks-auth-mfa-status {
+        grid-template-columns: 1fr;
+    }
+
+    .marks-auth-mfa-verify {
+        flex-direction: column;
+    }
+
+    .marks-auth-passkey-item {
+        flex-direction: column;
+    }
+
+    .marks-auth-passkey-item .marks-auth-actions {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .marks-auth-passkey-item .marks-auth-actions button {
+        width: 100%;
+    }
+
+    .marks-auth-passkey-edit {
+        grid-template-columns: 1fr;
+    }
+
+    .marks-auth-recovery-codes ul {
+        grid-template-columns: 1fr;
+    }
+
+    .marks-auth-reauth-actions {
+        flex-direction: column-reverse;
+    }
+
+    .marks-auth-reauth-actions button {
+        width: 100%;
+    }
 }

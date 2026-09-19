@@ -155,7 +155,7 @@ class AuthPasskeyModel(AuthBase):
     )
 
     sign_count: Mapped[int] = mapped_column(
-        Integer,
+        BigInteger,
         nullable=False,
         default=0,
     )

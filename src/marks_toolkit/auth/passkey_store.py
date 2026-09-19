@@ -57,9 +57,19 @@ class PasskeyStore(Protocol):
         self,
         credential_id: bytes,
         *,
+        expected_sign_count: int,
         sign_count: int,
         last_used_at: datetime,
-    ) -> None:
+    ) -> bool:
+        """
+        Update passkey usage only if the stored
+        signature counter still equals
+        expected_sign_count.
+
+        Returns False when the credential no
+        longer exists or its counter changed
+        concurrently.
+        """
         ...
 
     def delete(

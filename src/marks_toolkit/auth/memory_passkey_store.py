@@ -141,9 +141,10 @@ class MemoryPasskeyStore(PasskeyStore):
         self,
         credential_id: bytes,
         *,
+        expected_sign_count: int,
         sign_count: int,
         last_used_at,
-    ) -> None:
+    ) -> bool:
         with self._lock:
             credential = (
                 self._credentials.get(
@@ -152,9 +153,13 @@ class MemoryPasskeyStore(PasskeyStore):
             )
 
             if credential is None:
-                raise KeyError(
-                    "Passkey credential not found."
-                )
+                return False
+
+            if (
+                credential.sign_count
+                != expected_sign_count
+            ):
+                return False
 
             self._credentials[
                 credential_id
@@ -163,6 +168,8 @@ class MemoryPasskeyStore(PasskeyStore):
                 sign_count=sign_count,
                 last_used_at=last_used_at,
             )
+
+            return True
 
     # ============================================================
     # DELETE

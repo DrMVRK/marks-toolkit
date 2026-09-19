@@ -90,38 +90,100 @@ def test_update_usage():
 
     credential = make_credential()
 
-    store.create(credential)
+    store.create(
+        credential
+    )
 
     last_used_at = datetime.now(
         timezone.utc
     )
 
-    store.update_usage(
+    updated = store.update_usage(
         b"credential-1",
+        expected_sign_count=(
+            credential.sign_count
+        ),
         sign_count=8,
         last_used_at=last_used_at,
     )
 
-    stored = store.get_by_credential_id(
-        b"credential-1"
+    assert updated is True
+
+    stored = (
+        store.get_by_credential_id(
+            b"credential-1"
+        )
     )
 
+    assert stored is not None
     assert stored.sign_count == 8
-    assert stored.last_used_at == last_used_at
+    assert (
+        stored.last_used_at
+        == last_used_at
+    )
 
 
 def test_update_missing_passkey_fails():
     store = MemoryPasskeyStore()
 
-    with pytest.raises(KeyError):
+    updated = store.update_usage(
+        b"missing",
+        expected_sign_count=0,
+        sign_count=1,
+        last_used_at=datetime.now(
+            timezone.utc
+        ),
+    )
+
+    assert updated is False
+
+def test_update_usage_rejects_stale_sign_count():
+    store = MemoryPasskeyStore()
+
+    credential = make_credential()
+
+    store.create(
+        credential
+    )
+
+    first_update = (
         store.update_usage(
-            b"missing",
-            sign_count=1,
+            b"credential-1",
+            expected_sign_count=(
+                credential.sign_count
+            ),
+            sign_count=5,
             last_used_at=datetime.now(
                 timezone.utc
             ),
         )
+    )
 
+    assert first_update is True
+
+    stale_update = (
+        store.update_usage(
+            b"credential-1",
+            expected_sign_count=(
+                credential.sign_count
+            ),
+            sign_count=6,
+            last_used_at=datetime.now(
+                timezone.utc
+            ),
+        )
+    )
+
+    assert stale_update is False
+
+    stored = (
+        store.get_by_credential_id(
+            b"credential-1"
+        )
+    )
+
+    assert stored is not None
+    assert stored.sign_count == 5
 
 def test_delete_passkey():
     store = MemoryPasskeyStore()
