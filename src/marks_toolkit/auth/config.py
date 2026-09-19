@@ -275,3 +275,13 @@ class AuthConfig:
             "MARKS_AUTH_PASSKEY_ENROLLMENT_WINDOW",
             300,
         )
+
+        self.passkey_login_limit = app.config.get(
+            "MARKS_AUTH_PASSKEY_LOGIN_LIMIT",
+            10,
+        )
+
+        self.passkey_login_window = app.config.get(
+            "MARKS_AUTH_PASSKEY_LOGIN_WINDOW",
+            300,
+        )

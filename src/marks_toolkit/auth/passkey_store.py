@@ -7,20 +7,18 @@ from typing import Protocol
 class PasskeyCredential:
     id: int | str | None
     user_id: int | str
-
     user_handle: bytes
-
     credential_id: bytes
     public_key: bytes
-
     sign_count: int
 
     name: str | None = None
+
     transports: tuple[str, ...] = ()
 
     created_at: datetime = field(
-        default_factory=lambda: (
-            datetime.now(timezone.utc)
+        default_factory=lambda: datetime.now(
+            timezone.utc
         )
     )
 
@@ -44,6 +42,15 @@ class PasskeyStore(Protocol):
         self,
         user_id: int | str,
     ) -> list[PasskeyCredential]:
+        ...
+
+    def update_name(
+        self,
+        user_id: int | str,
+        credential_id: bytes,
+        *,
+        name: str | None,
+    ) -> bool:
         ...
 
     def update_usage(

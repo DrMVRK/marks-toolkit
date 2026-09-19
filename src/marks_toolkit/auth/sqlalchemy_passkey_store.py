@@ -13,8 +13,13 @@ from .sqlalchemy_models import (
 
 
 class SQLAlchemyPasskeyStore(PasskeyStore):
-    def __init__(self, session_factory):
-        self.session_factory = session_factory
+    def __init__(
+        self,
+        session_factory,
+    ):
+        self.session_factory = (
+            session_factory
+        )
 
     # ============================================================
     # CONVERSION
@@ -28,7 +33,9 @@ class SQLAlchemyPasskeyStore(PasskeyStore):
             id=model.id,
             user_id=model.user_id,
             user_handle=model.user_handle,
-            credential_id=model.credential_id,
+            credential_id=(
+                model.credential_id
+            ),
             public_key=model.public_key,
             sign_count=model.sign_count,
             name=model.name,
@@ -36,7 +43,9 @@ class SQLAlchemyPasskeyStore(PasskeyStore):
                 model.transports or []
             ),
             created_at=model.created_at,
-            last_used_at=model.last_used_at,
+            last_used_at=(
+                model.last_used_at
+            ),
         )
 
     # ============================================================
@@ -66,16 +75,28 @@ class SQLAlchemyPasskeyStore(PasskeyStore):
 
         model = AuthPasskeyModel(
             user_id=credential.user_id,
-            user_handle=credential.user_handle,
-            credential_id=credential.credential_id,
-            public_key=credential.public_key,
-            sign_count=credential.sign_count,
+            user_handle=(
+                credential.user_handle
+            ),
+            credential_id=(
+                credential.credential_id
+            ),
+            public_key=(
+                credential.public_key
+            ),
+            sign_count=(
+                credential.sign_count
+            ),
             name=credential.name,
             transports=list(
                 credential.transports
             ),
-            created_at=credential.created_at,
-            last_used_at=credential.last_used_at,
+            created_at=(
+                credential.created_at
+            ),
+            last_used_at=(
+                credential.last_used_at
+            ),
         )
 
         with self.session_factory() as session:
@@ -88,7 +109,8 @@ class SQLAlchemyPasskeyStore(PasskeyStore):
                 session.rollback()
 
                 raise ValueError(
-                    "Passkey credential already exists."
+                    "Passkey credential "
+                    "already exists."
                 )
 
             session.refresh(model)
@@ -115,7 +137,8 @@ class SQLAlchemyPasskeyStore(PasskeyStore):
             statement = select(
                 AuthPasskeyModel
             ).where(
-                AuthPasskeyModel.credential_id
+                AuthPasskeyModel
+                .credential_id
                 == credential_id
             )
 
@@ -136,13 +159,17 @@ class SQLAlchemyPasskeyStore(PasskeyStore):
     ) -> list[PasskeyCredential]:
         with self.session_factory() as session:
             statement = (
-                select(AuthPasskeyModel)
+                select(
+                    AuthPasskeyModel
+                )
                 .where(
-                    AuthPasskeyModel.user_id
+                    AuthPasskeyModel
+                        .user_id
                     == user_id
                 )
                 .order_by(
-                    AuthPasskeyModel.created_at,
+                    AuthPasskeyModel
+                        .created_at,
                     AuthPasskeyModel.id,
                 )
             )
@@ -152,9 +179,46 @@ class SQLAlchemyPasskeyStore(PasskeyStore):
             ).all()
 
             return [
-                self._to_credential(model)
+                self._to_credential(
+                    model
+                )
                 for model in models
             ]
+
+    # ============================================================
+    # NAME UPDATE
+    # ============================================================
+
+    def update_name(
+        self,
+        user_id: int | str,
+        credential_id: bytes,
+        *,
+        name: str | None,
+    ) -> bool:
+        with self.session_factory() as session:
+            statement = select(
+                AuthPasskeyModel
+            ).where(
+                AuthPasskeyModel.user_id
+                == user_id,
+                AuthPasskeyModel
+                    .credential_id
+                == credential_id,
+            )
+
+            model = session.scalar(
+                statement
+            )
+
+            if model is None:
+                return False
+
+            model.name = name
+
+            session.commit()
+
+            return True
 
     # ============================================================
     # USAGE UPDATE
@@ -171,7 +235,8 @@ class SQLAlchemyPasskeyStore(PasskeyStore):
             statement = select(
                 AuthPasskeyModel
             ).where(
-                AuthPasskeyModel.credential_id
+                AuthPasskeyModel
+                    .credential_id
                 == credential_id
             )
 
@@ -181,10 +246,14 @@ class SQLAlchemyPasskeyStore(PasskeyStore):
 
             if model is None:
                 raise KeyError(
-                    "Passkey credential not found."
+                    "Passkey credential "
+                    "not found."
                 )
 
-            model.sign_count = sign_count
+            model.sign_count = (
+                sign_count
+            )
+
             model.last_used_at = (
                 last_used_at
             )
@@ -202,11 +271,15 @@ class SQLAlchemyPasskeyStore(PasskeyStore):
     ) -> bool:
         with self.session_factory() as session:
             statement = (
-                delete(AuthPasskeyModel)
+                delete(
+                    AuthPasskeyModel
+                )
                 .where(
                     AuthPasskeyModel.user_id
                     == user_id,
-                    AuthPasskeyModel.credential_id
+
+                    AuthPasskeyModel
+                        .credential_id
                     == credential_id,
                 )
             )

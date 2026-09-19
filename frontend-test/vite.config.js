@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import { fileURLToPath } from "url";
 
+
 const __filename = fileURLToPath(
     import.meta.url
 );
@@ -10,6 +11,7 @@ const __filename = fileURLToPath(
 const __dirname = path.dirname(
     __filename
 );
+
 
 export default defineConfig({
     plugins: [
@@ -21,8 +23,28 @@ export default defineConfig({
             "@marks-auth": path.resolve(
                 __dirname,
                 "../frontend/auth"
+            ),
+
+            "react": path.resolve(
+                __dirname,
+                "node_modules/react"
+            ),
+
+            "react-dom": path.resolve(
+                __dirname,
+                "node_modules/react-dom"
+            ),
+
+            "qrcode.react": path.resolve(
+                __dirname,
+                "node_modules/qrcode.react"
             )
-        }
+        },
+
+        dedupe: [
+            "react",
+            "react-dom"
+        ]
     },
 
     server: {

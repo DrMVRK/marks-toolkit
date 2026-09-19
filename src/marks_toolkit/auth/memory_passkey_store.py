@@ -1,4 +1,4 @@
-from datetime import datetime
+from dataclasses import replace
 from threading import Lock
 
 from .passkey_store import (
@@ -9,11 +9,7 @@ from .passkey_store import (
 
 class MemoryPasskeyStore(PasskeyStore):
     def __init__(self):
-        self._credentials: dict[
-            bytes,
-            PasskeyCredential,
-        ] = {}
-
+        self._credentials = {}
         self._lock = Lock()
 
     # ============================================================
@@ -33,12 +29,8 @@ class MemoryPasskeyStore(PasskeyStore):
                 "PasskeyCredential"
             )
 
-        credential_id = (
-            credential.credential_id
-        )
-
         if not isinstance(
-            credential_id,
+            credential.credential_id,
             bytes,
         ):
             raise TypeError(
@@ -47,7 +39,7 @@ class MemoryPasskeyStore(PasskeyStore):
 
         with self._lock:
             if (
-                credential_id
+                credential.credential_id
                 in self._credentials
             ):
                 raise ValueError(
@@ -55,7 +47,7 @@ class MemoryPasskeyStore(PasskeyStore):
                 )
 
             self._credentials[
-                credential_id
+                credential.credential_id
             ] = credential
 
             return credential
@@ -81,16 +73,65 @@ class MemoryPasskeyStore(PasskeyStore):
 
     def list_for_user(
         self,
-        user_id: str,
+        user_id: int | str,
     ) -> list[PasskeyCredential]:
         with self._lock:
-            return [
+            credentials = [
                 credential
                 for credential
                 in self._credentials.values()
                 if credential.user_id
                 == user_id
             ]
+
+            return sorted(
+                credentials,
+                key=lambda credential: (
+                    credential.created_at,
+                    str(
+                        credential.id
+                        if credential.id
+                        is not None
+                        else ""
+                    ),
+                ),
+            )
+
+    # ============================================================
+    # NAME UPDATE
+    # ============================================================
+
+    def update_name(
+        self,
+        user_id: int | str,
+        credential_id: bytes,
+        *,
+        name: str | None,
+    ) -> bool:
+        with self._lock:
+            credential = (
+                self._credentials.get(
+                    credential_id
+                )
+            )
+
+            if credential is None:
+                return False
+
+            if (
+                credential.user_id
+                != user_id
+            ):
+                return False
+
+            self._credentials[
+                credential_id
+            ] = replace(
+                credential,
+                name=name,
+            )
+
+            return True
 
     # ============================================================
     # USAGE UPDATE
@@ -101,7 +142,7 @@ class MemoryPasskeyStore(PasskeyStore):
         credential_id: bytes,
         *,
         sign_count: int,
-        last_used_at: datetime,
+        last_used_at,
     ) -> None:
         with self._lock:
             credential = (
@@ -115,12 +156,12 @@ class MemoryPasskeyStore(PasskeyStore):
                     "Passkey credential not found."
                 )
 
-            credential.sign_count = (
-                sign_count
-            )
-
-            credential.last_used_at = (
-                last_used_at
+            self._credentials[
+                credential_id
+            ] = replace(
+                credential,
+                sign_count=sign_count,
+                last_used_at=last_used_at,
             )
 
     # ============================================================
@@ -129,7 +170,7 @@ class MemoryPasskeyStore(PasskeyStore):
 
     def delete(
         self,
-        user_id: str,
+        user_id: int | str,
         credential_id: bytes,
     ) -> bool:
         with self._lock:
@@ -142,7 +183,10 @@ class MemoryPasskeyStore(PasskeyStore):
             if credential is None:
                 return False
 
-            if credential.user_id != user_id:
+            if (
+                credential.user_id
+                != user_id
+            ):
                 return False
 
             del self._credentials[

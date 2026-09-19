@@ -1,3 +1,5 @@
+import base64
+
 from flask import Blueprint, current_app, request
 from flask_login import (
     current_user,
@@ -27,6 +29,68 @@ from webauthn.helpers.exceptions import (
 )
 
 auth_bp = Blueprint("marks_auth", __name__)
+
+def encode_passkey_credential_id(
+    credential_id,
+):
+    if not isinstance(
+        credential_id,
+        bytes,
+    ):
+        raise TypeError(
+            "credential_id must be bytes"
+        )
+
+    return (
+        base64.urlsafe_b64encode(
+            credential_id
+        )
+        .rstrip(b"=")
+        .decode("ascii")
+    )
+
+
+def decode_passkey_credential_id(
+    encoded_id,
+):
+    if (
+        not isinstance(encoded_id, str)
+        or not encoded_id
+    ):
+        raise ValueError(
+            "Invalid passkey credential ID."
+        )
+
+    try:
+        encoded_bytes = (
+            encoded_id.encode("ascii")
+        )
+
+    except UnicodeEncodeError as error:
+        raise ValueError(
+            "Invalid passkey credential ID."
+        ) from error
+
+    padding = (
+        b"="
+        * (
+            -len(encoded_bytes)
+            % 4
+        )
+    )
+
+    try:
+        return (
+            base64.urlsafe_b64decode(
+                encoded_bytes
+                + padding
+            )
+        )
+
+    except Exception as error:
+        raise ValueError(
+            "Invalid passkey credential ID."
+        ) from error
 
 def refresh_security_session(
     state,
@@ -908,6 +972,626 @@ def finish_passkey_registration():
     )
 
 
+@auth_bp.post(
+    "/passkeys/login/options"
+)
+@csrf_protected
+@throttle(
+    action="passkey-login-options",
+    identities=("ip",),
+    limit_config="passkey_login_limit",
+    window_config="passkey_login_window",
+)
+def begin_passkey_login():
+    state = current_app.extensions[
+        "marks_auth"
+    ]
+
+    if not state.config.webauthn_enabled:
+        return error_response(
+            code="WEBAUTHN_DISABLED",
+            message=(
+                "Passkey authentication is not "
+                "enabled for this application."
+            ),
+            status_code=404,
+        )
+
+    if state.passkey_service is None:
+        return error_response(
+            code="WEBAUTHN_UNAVAILABLE",
+            message=(
+                "Passkey authentication is "
+                "currently unavailable."
+            ),
+            status_code=503,
+        )
+
+    try:
+        authentication = (
+            state.passkey_service
+            .begin_authentication()
+        )
+
+    except (
+        WebAuthnException,
+        ValueError,
+        TypeError,
+        RuntimeError,
+    ):
+        state.audit_logger.log(
+            "passkey_login_options_failed",
+            ip_address=(
+                request.remote_addr
+                or "unknown"
+            ),
+        )
+
+        return error_response(
+            code="PASSKEY_LOGIN_FAILED",
+            message=(
+                "Passkey authentication could "
+                "not be started."
+            ),
+            status_code=400,
+        )
+
+    return no_store_response(
+        data={
+            "challenge_id": (
+                authentication[
+                    "challenge_id"
+                ]
+            ),
+            "options": (
+                authentication[
+                    "options"
+                ]
+            ),
+        },
+        message=(
+            "Passkey authentication started."
+        ),
+    )
+
+
+@auth_bp.post(
+    "/passkeys/login/verify"
+)
+@csrf_protected
+@throttle(
+    action="passkey-login-verify",
+    identities=(
+        "ip",
+        "challenge",
+    ),
+    limit_config="passkey_login_limit",
+    window_config="passkey_login_window",
+)
+def finish_passkey_login():
+    state = current_app.extensions[
+        "marks_auth"
+    ]
+
+    if not state.config.webauthn_enabled:
+        return error_response(
+            code="WEBAUTHN_DISABLED",
+            message=(
+                "Passkey authentication is not "
+                "enabled for this application."
+            ),
+            status_code=404,
+        )
+
+    if state.passkey_service is None:
+        return error_response(
+            code="WEBAUTHN_UNAVAILABLE",
+            message=(
+                "Passkey authentication is "
+                "currently unavailable."
+            ),
+            status_code=503,
+        )
+
+    data, request_error = (
+        get_json_object()
+    )
+
+    if request_error is not None:
+        return request_error
+
+    if not isinstance(data, dict):
+        return error_response(
+            code="INVALID_REQUEST",
+            message=(
+                "Request body must contain "
+                "a JSON object."
+            ),
+            status_code=400,
+        )
+
+    challenge_id, field_error = (
+        get_required_string(
+            data,
+            "challenge_id",
+        )
+    )
+
+    if field_error is not None:
+        return field_error
+
+    credential = data.get(
+        "credential"
+    )
+
+    if not isinstance(
+        credential,
+        dict,
+    ):
+        return error_response(
+            code="INVALID_REQUEST",
+            message=(
+                "A WebAuthn credential "
+                "response is required."
+            ),
+            status_code=400,
+        )
+
+    try:
+        user_id = (
+            state.passkey_service
+            .finish_authentication(
+                challenge_id=challenge_id,
+                credential=credential,
+            )
+        )
+
+    except (
+        WebAuthnException,
+        ValueError,
+        TypeError,
+        RuntimeError,
+        KeyError,
+    ):
+        state.audit_logger.log(
+            "passkey_login_failure",
+            ip_address=(
+                request.remote_addr
+                or "unknown"
+            ),
+        )
+
+        return error_response(
+            code="INVALID_PASSKEY",
+            message=(
+                "Passkey authentication failed."
+            ),
+            status_code=401,
+        )
+
+    user = state.user_store.find_by_id(
+        user_id
+    )
+
+    if user is None:
+        state.audit_logger.log(
+            "passkey_login_failure",
+            ip_address=(
+                request.remote_addr
+                or "unknown"
+            ),
+        )
+
+        return error_response(
+            code="INVALID_PASSKEY",
+            message=(
+                "Passkey authentication failed."
+            ),
+            status_code=401,
+        )
+
+    logged_in = login_user(
+        user,
+        remember=False,
+        fresh=True,
+    )
+
+    if not logged_in:
+        state.audit_logger.log(
+            "passkey_login_failure",
+            auth_id=getattr(
+                user,
+                "auth_id",
+                None,
+            ),
+            ip_address=(
+                request.remote_addr
+                or "unknown"
+            ),
+        )
+
+        return error_response(
+            code="ACCOUNT_UNAVAILABLE",
+            message=(
+                "This account is not available."
+            ),
+            status_code=403,
+        )
+
+    state.audit_logger.log(
+        "login_success",
+        auth_id=user.auth_id,
+        username=user.username,
+        ip_address=(
+            request.remote_addr
+            or "unknown"
+        ),
+        remember=False,
+        authentication_method="passkey",
+    )
+
+    return success_response(
+        data={
+            "auth_id": user.auth_id,
+            "username": user.username,
+            "email": user.email,
+        },
+        message="Login successful.",
+    )
+
+
+@auth_bp.get("/passkeys")
+@login_required
+def list_passkeys():
+    state = current_app.extensions[
+        "marks_auth"
+    ]
+
+    if not state.config.webauthn_enabled:
+        return error_response(
+            code="WEBAUTHN_DISABLED",
+            message=(
+                "Passkey authentication is not "
+                "enabled for this application."
+            ),
+            status_code=404,
+        )
+
+    if state.passkey_store is None:
+        return error_response(
+            code="WEBAUTHN_UNAVAILABLE",
+            message=(
+                "Passkey authentication is "
+                "currently unavailable."
+            ),
+            status_code=503,
+        )
+
+    credentials = (
+        state.passkey_store.list_for_user(
+            current_user.id
+        )
+    )
+
+    passkeys = []
+
+    for credential in credentials:
+        passkeys.append(
+            {
+                "credential_id": (
+                    encode_passkey_credential_id(
+                        credential.credential_id
+                    )
+                ),
+
+                "name": credential.name,
+
+                "created_at": (
+                    credential.created_at
+                    .isoformat()
+                    if credential.created_at
+                    is not None
+                    else None
+                ),
+
+                "last_used_at": (
+                    credential.last_used_at
+                    .isoformat()
+                    if credential.last_used_at
+                    is not None
+                    else None
+                ),
+
+                "transports": list(
+                    credential.transports
+                ),
+            }
+        )
+
+    return no_store_response(
+        data={
+            "passkeys": passkeys,
+        }
+    )
+
+
+@auth_bp.patch(
+    "/passkeys/<credential_id>"
+)
+@login_required
+@csrf_protected
+def rename_passkey(
+    credential_id,
+):
+    state = current_app.extensions[
+        "marks_auth"
+    ]
+
+    if not state.config.webauthn_enabled:
+        return error_response(
+            code="WEBAUTHN_DISABLED",
+            message=(
+                "Passkey authentication is not "
+                "enabled for this application."
+            ),
+            status_code=404,
+        )
+
+    if state.passkey_store is None:
+        return error_response(
+            code="WEBAUTHN_UNAVAILABLE",
+            message=(
+                "Passkey authentication is "
+                "currently unavailable."
+            ),
+            status_code=503,
+        )
+
+    data, request_error = (
+        get_json_object()
+    )
+
+    if request_error is not None:
+        return request_error
+
+    if not isinstance(data, dict):
+        return error_response(
+            code="INVALID_REQUEST",
+            message=(
+                "Request body must contain "
+                "a JSON object."
+            ),
+            status_code=400,
+        )
+
+    name = data.get("name")
+
+    if name is not None:
+        if not isinstance(name, str):
+            return error_response(
+                code="INVALID_REQUEST",
+                message=(
+                    "Passkey name must be "
+                    "a string."
+                ),
+                status_code=400,
+            )
+
+        name = name.strip()
+
+        if not name:
+            name = None
+
+        elif len(name) > 100:
+            return error_response(
+                code="INVALID_REQUEST",
+                message=(
+                    "Passkey name must be "
+                    "100 characters or fewer."
+                ),
+                status_code=400,
+            )
+
+    try:
+        credential_id_bytes = (
+            decode_passkey_credential_id(
+                credential_id
+            )
+        )
+
+    except ValueError:
+        return error_response(
+            code="PASSKEY_NOT_FOUND",
+            message=(
+                "Passkey was not found."
+            ),
+            status_code=404,
+        )
+
+    updated = (
+        state.passkey_store.update_name(
+            current_user.id,
+            credential_id_bytes,
+            name=name,
+        )
+    )
+
+    if not updated:
+        return error_response(
+            code="PASSKEY_NOT_FOUND",
+            message=(
+                "Passkey was not found."
+            ),
+            status_code=404,
+        )
+
+    state.audit_logger.log(
+        "passkey_renamed",
+        auth_id=current_user.auth_id,
+        username=current_user.username,
+        ip_address=(
+            request.remote_addr
+            or "unknown"
+        ),
+    )
+
+    return success_response(
+        data={
+            "credential_id":
+                credential_id,
+
+            "name":
+                name,
+        },
+        message=(
+            "Passkey renamed successfully."
+        ),
+    )
+
+
+@auth_bp.delete(
+    "/passkeys/<credential_id>"
+)
+@login_required
+@csrf_protected
+def delete_passkey(
+    credential_id,
+):
+    state = current_app.extensions[
+        "marks_auth"
+    ]
+
+    if not state.config.webauthn_enabled:
+        return error_response(
+            code="WEBAUTHN_DISABLED",
+            message=(
+                "Passkey authentication is not "
+                "enabled for this application."
+            ),
+            status_code=404,
+        )
+
+    if state.passkey_store is None:
+        return error_response(
+            code="WEBAUTHN_UNAVAILABLE",
+            message=(
+                "Passkey authentication is "
+                "currently unavailable."
+            ),
+            status_code=503,
+        )
+
+    data, request_error = (
+        get_json_object()
+    )
+
+    if request_error is not None:
+        return request_error
+
+    if not isinstance(data, dict):
+        return error_response(
+            code="INVALID_REQUEST",
+            message=(
+                "Request body must contain "
+                "a JSON object."
+            ),
+            status_code=400,
+        )
+
+    current_password, field_error = (
+        get_required_string(
+            data,
+            "current_password",
+        )
+    )
+
+    if field_error is not None:
+        return field_error
+
+    if not (
+        state.password_service
+        .verify_password(
+            current_user.password_hash,
+            current_password,
+        )
+    ):
+        state.audit_logger.log(
+            "passkey_delete_reauth_failed",
+            auth_id=current_user.auth_id,
+            username=current_user.username,
+            ip_address=(
+                request.remote_addr
+                or "unknown"
+            ),
+        )
+
+        return error_response(
+            code="INVALID_PASSWORD",
+            message=(
+                "Current password is incorrect."
+            ),
+            status_code=401,
+        )
+
+    try:
+        credential_id_bytes = (
+            decode_passkey_credential_id(
+                credential_id
+            )
+        )
+
+    except ValueError:
+        return error_response(
+            code="PASSKEY_NOT_FOUND",
+            message=(
+                "Passkey was not found."
+            ),
+            status_code=404,
+        )
+
+    deleted = (
+        state.passkey_store.delete(
+            current_user.id,
+            credential_id_bytes,
+        )
+    )
+
+    if not deleted:
+        return error_response(
+            code="PASSKEY_NOT_FOUND",
+            message=(
+                "Passkey was not found."
+            ),
+            status_code=404,
+        )
+
+    user = (
+        current_user
+        ._get_current_object()
+    )
+
+    refresh_security_session(
+        state,
+        user,
+    )
+
+    state.audit_logger.log(
+        "passkey_deleted",
+        auth_id=user.auth_id,
+        username=user.username,
+        ip_address=(
+            request.remote_addr
+            or "unknown"
+        ),
+    )
+
+    return success_response(
+        message=(
+            "Passkey deleted successfully."
+        )
+    )
+
+
 @auth_bp.post("/mfa/totp/enroll")
 @login_required
 @csrf_protected
@@ -1261,12 +1945,19 @@ def recovery_code_status():
 
 @auth_bp.get("/config")
 def auth_config():
-    state = current_app.extensions["marks_auth"]
+    state = current_app.extensions[
+        "marks_auth"
+    ]
 
     return success_response(
         data={
             "captcha_site_key": (
                 state.config.captcha_site_key
+            ),
+            "passkeys_available": (
+                state.config.webauthn_enabled
+                and state.passkey_service
+                is not None
             ),
         }
     )

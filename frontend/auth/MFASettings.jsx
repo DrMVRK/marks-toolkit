@@ -3,7 +3,7 @@ import { QRCodeSVG } from "qrcode.react";
 
 import { useAuth } from "./AuthProvider";
 import ReauthDialog from "./ReauthDialog";
-import PasskeyEnrollment from "./PasskeyEnrollment";
+import PasskeyManager from "./PasskeyManager";
 
 
 export default function MFASettings() {
@@ -517,8 +517,8 @@ export default function MFASettings() {
             )}
 
             {status?.passkeys_available && (
-                <PasskeyEnrollment
-                    onEnrolled={
+                <PasskeyManager
+                    onChanged={
                         refreshStatus
                     }
                 />

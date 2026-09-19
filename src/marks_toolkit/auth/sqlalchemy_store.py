@@ -31,6 +31,16 @@ class SQLAlchemyUserStore(UserStore):
 
             return session.scalar(statement)
 
+    def find_by_id(
+        self,
+        user_id,
+    ):
+        with self.session_factory() as session:
+            return session.get(
+                AuthUserModel,
+                user_id
+            )
+
     def email_exists(self, email_key):
         with self.session_factory() as session:
             statement = select(AuthUserModel.id).where(

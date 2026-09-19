@@ -4,37 +4,68 @@ from abc import ABC, abstractmethod
 class UserStore(ABC):
 
     @abstractmethod
-    def find_by_identity(self, identity):
+    def find_by_identity(
+        self,
+        identity,
+    ):
         pass
 
     @abstractmethod
-    def find_by_auth_id(self, auth_id):
+    def find_by_auth_id(
+        self,
+        auth_id,
+    ):
         pass
 
     @abstractmethod
-    def email_exists(self, email_key):
+    def find_by_id(
+        self,
+        user_id,
+    ):
         pass
 
     @abstractmethod
-    def username_exists(self, username_key):
+    def email_exists(
+        self,
+        email_key,
+    ):
         pass
 
     @abstractmethod
-    def create_user(self, email, username, password_hash):
+    def username_exists(
+        self,
+        username_key,
+    ):
         pass
 
     @abstractmethod
-    def rotate_auth_id(self, user):
+    def create_user(
+        self,
+        email,
+        username,
+        password_hash,
+    ):
         pass
 
     @abstractmethod
-    def update_password(self, user, password_hash):
+    def rotate_auth_id(
+        self,
+        user,
+    ):
+        pass
+
+    @abstractmethod
+    def update_password(
+        self,
+        user,
+        password_hash,
+    ):
         pass
 
     @abstractmethod
     def update_password_and_rotate_auth_id(
         self,
         user,
-        password_hash
+        password_hash,
     ):
         pass

@@ -1,14 +1,18 @@
 import secrets
+from datetime import datetime, timezone
 from time import time
 
 from webauthn import (
+    generate_authentication_options,
     generate_registration_options,
+    verify_authentication_response,
     verify_registration_response,
 )
 from webauthn.helpers import (
     generate_challenge,
     generate_user_handle,
     options_to_json_dict,
+    parse_authentication_credential_json,
     parse_registration_credential_json,
 )
 from webauthn.helpers.structs import (
@@ -66,10 +70,6 @@ class PasskeyService:
             )
         )
 
-        # --------------------------------------------------------
-        # WebAuthn user handle
-        # --------------------------------------------------------
-
         if existing_credentials:
             user_handle = (
                 existing_credentials[0]
@@ -91,10 +91,6 @@ class PasskeyService:
                 generate_user_handle()
             )
 
-        # --------------------------------------------------------
-        # Existing credential exclusion
-        # --------------------------------------------------------
-
         exclude_credentials = []
 
         for credential in existing_credentials:
@@ -109,9 +105,6 @@ class PasskeyService:
                     )
 
                 except ValueError:
-                    # Transport values are browser hints only.
-                    # Unknown future values should not prevent
-                    # registration.
                     continue
 
             exclude_credentials.append(
@@ -124,10 +117,6 @@ class PasskeyService:
                     ),
                 )
             )
-
-        # --------------------------------------------------------
-        # Challenge
-        # --------------------------------------------------------
 
         challenge = generate_challenge()
 
@@ -148,10 +137,6 @@ class PasskeyService:
                 ),
             )
         )
-
-        # --------------------------------------------------------
-        # Registration options
-        # --------------------------------------------------------
 
         username = getattr(
             user,
@@ -230,10 +215,6 @@ class PasskeyService:
                 "A valid WebAuthn challenge ID is required."
             )
 
-        # --------------------------------------------------------
-        # Consume challenge atomically
-        # --------------------------------------------------------
-
         challenge = (
             self.challenge_store.consume(
                 challenge_id
@@ -244,9 +225,6 @@ class PasskeyService:
             raise ValueError(
                 "WebAuthn challenge is invalid or expired."
             )
-
-        # From this point forward the challenge is gone,
-        # even if verification fails. This prevents replay.
 
         if challenge.ceremony != "registration":
             raise ValueError(
@@ -264,19 +242,11 @@ class PasskeyService:
                 "has no user handle."
             )
 
-        # --------------------------------------------------------
-        # Parse browser credential
-        # --------------------------------------------------------
-
         parsed_credential = (
             parse_registration_credential_json(
                 credential
             )
         )
-
-        # --------------------------------------------------------
-        # Cryptographic WebAuthn verification
-        # --------------------------------------------------------
 
         verification = (
             verify_registration_response(
@@ -290,10 +260,6 @@ class PasskeyService:
                 require_user_verification=True,
             )
         )
-
-        # --------------------------------------------------------
-        # Defensive credential consistency check
-        # --------------------------------------------------------
 
         if (
             parsed_credential.raw_id
@@ -309,10 +275,6 @@ class PasskeyService:
                 "WebAuthn user verification was not completed."
             )
 
-        # --------------------------------------------------------
-        # Transport metadata
-        # --------------------------------------------------------
-
         transports = ()
 
         if (
@@ -324,10 +286,6 @@ class PasskeyService:
                 for transport
                 in parsed_credential.response.transports
             )
-
-        # --------------------------------------------------------
-        # Persist credential
-        # --------------------------------------------------------
 
         passkey = PasskeyCredential(
             id=None,
@@ -351,3 +309,188 @@ class PasskeyService:
         return self.passkey_store.create(
             passkey
         )
+
+    # ============================================================
+    # AUTHENTICATION — BEGIN
+    # ============================================================
+
+    def begin_authentication(
+        self,
+    ):
+        challenge = generate_challenge()
+
+        challenge_id = (
+            secrets.token_urlsafe(32)
+        )
+
+        self.challenge_store.create(
+            WebAuthnChallenge(
+                id=challenge_id,
+                challenge=challenge,
+                ceremony="authentication",
+                user_id=None,
+                user_handle=None,
+                expires_at=(
+                    time()
+                    + self.challenge_ttl
+                ),
+            )
+        )
+
+        options = (
+            generate_authentication_options(
+                rp_id=self.rp_id,
+                challenge=challenge,
+
+                # Intentionally omit allow_credentials.
+                # This enables discoverable credentials
+                # and conditional/passkey-first login.
+                allow_credentials=None,
+
+                user_verification=(
+                    UserVerificationRequirement.REQUIRED
+                ),
+            )
+        )
+
+        return {
+            "challenge_id": challenge_id,
+            "options": options_to_json_dict(
+                options
+            ),
+        }
+
+    # ============================================================
+    # AUTHENTICATION — FINISH
+    # ============================================================
+
+    def finish_authentication(
+        self,
+        *,
+        challenge_id,
+        credential,
+    ):
+        if (
+            not isinstance(challenge_id, str)
+            or not challenge_id
+        ):
+            raise ValueError(
+                "A valid WebAuthn challenge ID is required."
+            )
+
+        challenge = (
+            self.challenge_store.consume(
+                challenge_id
+            )
+        )
+
+        if challenge is None:
+            raise ValueError(
+                "WebAuthn challenge is invalid or expired."
+            )
+
+        if (
+            challenge.ceremony
+            != "authentication"
+        ):
+            raise ValueError(
+                "WebAuthn challenge has the wrong ceremony type."
+            )
+
+        parsed_credential = (
+            parse_authentication_credential_json(
+                credential
+            )
+        )
+
+        stored_credential = (
+            self.passkey_store
+            .get_by_credential_id(
+                parsed_credential.raw_id
+            )
+        )
+
+        if stored_credential is None:
+            raise ValueError(
+                "Passkey credential is not recognized."
+            )
+
+        if (
+            parsed_credential.response.user_handle
+            is not None
+            and parsed_credential.response.user_handle
+            != stored_credential.user_handle
+        ):
+            raise ValueError(
+                "WebAuthn user handle does not "
+                "match the stored credential."
+            )
+
+        verification = (
+            verify_authentication_response(
+                credential=parsed_credential,
+                expected_challenge=(
+                    challenge.challenge
+                ),
+                expected_rp_id=self.rp_id,
+                expected_origin=self.origin,
+                credential_public_key=(
+                    stored_credential.public_key
+                ),
+                credential_current_sign_count=(
+                    stored_credential.sign_count
+                ),
+                require_user_verification=True,
+            )
+        )
+
+        if (
+            verification.credential_id
+            != stored_credential.credential_id
+        ):
+            raise ValueError(
+                "Verified WebAuthn credential ID "
+                "does not match the stored credential."
+            )
+
+        if not verification.user_verified:
+            raise ValueError(
+                "WebAuthn user verification was not completed."
+            )
+
+        new_sign_count = (
+            verification.new_sign_count
+        )
+
+        current_sign_count = (
+            stored_credential.sign_count
+        )
+
+        # A sign count of zero is valid for many synced
+        # multi-device passkeys. Do not reject zero-counter
+        # authenticators purely because they remain zero.
+        #
+        # If both counters are non-zero and the new value
+        # regresses, fail closed because that can indicate
+        # cloned credential state.
+        if (
+            current_sign_count > 0
+            and new_sign_count > 0
+            and new_sign_count
+            <= current_sign_count
+        ):
+            raise ValueError(
+                "Passkey signature counter did not advance."
+            )
+
+        self.passkey_store.update_usage(
+            stored_credential.credential_id,
+            sign_count=new_sign_count,
+            last_used_at=(
+                datetime.now(
+                    timezone.utc
+                )
+            ),
+        )
+
+        return stored_credential.user_id

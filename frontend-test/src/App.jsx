@@ -8,7 +8,7 @@ import DemoHeader from "./components/DemoHeader";
 import SecurityBadge from "./components/SecurityBadge";
 import UserDashboard from "./components/UserDashboard";
 
-import "./auth/auth.css";
+import "@marks-auth/auth.css";
 import "./demo.css";
 
 

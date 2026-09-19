@@ -17,29 +17,88 @@ export default class AuthClient {
         return response.json();
     }
 
-    async post(path, data = {}) {
+    async request(
+        method,
+        path,
+        data = null
+    ) {
+        const options = {
+            method,
+            credentials: "include",
+            headers: {
+                "X-CSRF-Token":
+                    this.csrfToken
+            }
+        };
+
+        if (data !== null) {
+            options.headers[
+                "Content-Type"
+            ] = "application/json";
+
+            options.body =
+                JSON.stringify(data);
+        }
+
         const response = await fetch(
             `${this.baseUrl}${path}`,
-            {
-                method: "POST",
-                credentials: "include",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-Token": this.csrfToken
-                },
-                body: JSON.stringify(data)
-            }
+            options
         );
 
         return response.json();
     }
 
-    async initialize() {
-        const configResponse = await this.get("/config");
-        const csrfResponse = await this.get("/csrf");
+    async post(
+        path,
+        data = {}
+    ) {
+        return this.request(
+            "POST",
+            path,
+            data
+        );
+    }
 
-        this.config = configResponse.data;
-        this.csrfToken = csrfResponse.data.csrf_token;
+    async patch(
+        path,
+        data = {}
+    ) {
+        return this.request(
+            "PATCH",
+            path,
+            data
+        );
+    }
+
+    async delete(
+        path,
+        data = {}
+    ) {
+        return this.request(
+            "DELETE",
+            path,
+            data
+        );
+    }
+
+    async initialize() {
+        const configResponse =
+            await this.get(
+                "/config"
+            );
+
+        const csrfResponse =
+            await this.get(
+                "/csrf"
+            );
+
+        this.config =
+            configResponse.data;
+
+        this.csrfToken =
+            csrfResponse
+                .data
+                .csrf_token;
 
         return this.config;
     }
@@ -57,10 +116,14 @@ export default class AuthClient {
         };
 
         if (captchaToken) {
-            data.captcha_token = captchaToken;
+            data.captcha_token =
+                captchaToken;
         }
 
-        return this.post("/login", data);
+        return this.post(
+            "/login",
+            data
+        );
     }
 
     async register({
@@ -68,35 +131,50 @@ export default class AuthClient {
         username,
         password
     }) {
-        return this.post("/register", {
-            email,
-            username,
-            password
-        });
+        return this.post(
+            "/register",
+            {
+                email,
+                username,
+                password
+            }
+        );
     }
 
-    async forgotPassword(email) {
-        return this.post("/forgot-password", {
-            email
-        });
+    async forgotPassword(
+        email
+    ) {
+        return this.post(
+            "/forgot-password",
+            {
+                email
+            }
+        );
     }
 
     async logout() {
-        return this.post("/logout");
+        return this.post(
+            "/logout"
+        );
     }
 
     async me() {
-        return this.get("/me");
+        return this.get(
+            "/me"
+        );
     }
 
     async resetPassword({
         token,
         password
     }) {
-        return this.post("/reset-password", {
-            token,
-            password
-        });
+        return this.post(
+            "/reset-password",
+            {
+                token,
+                password
+            }
+        );
     }
 
     changePassword({
@@ -106,34 +184,39 @@ export default class AuthClient {
         return this.post(
             "/change-password",
             {
-                current_password: currentPassword,
-                new_password: newPassword
+                current_password:
+                    currentPassword,
+                new_password:
+                    newPassword
             }
         );
     }
 
     completeTotpChallenge({
         challengeId,
-        code,
+        code
     }) {
         return this.post(
             "/mfa/challenge/totp",
             {
-                challenge_id: challengeId,
-                code,
+                challenge_id:
+                    challengeId,
+                code
             }
         );
     }
 
     completeRecoveryCodeChallenge({
         challengeId,
-        recoveryCode,
+        recoveryCode
     }) {
         return this.post(
             "/mfa/challenge/recovery-code",
             {
-                challenge_id: challengeId,
-                recovery_code: recoveryCode,
+                challenge_id:
+                    challengeId,
+                recovery_code:
+                    recoveryCode
             }
         );
     }
@@ -158,9 +241,65 @@ export default class AuthClient {
         return this.post(
             "/passkeys/register/verify",
             {
-                challenge_id: challengeId,
+                challenge_id:
+                    challengeId,
                 credential,
                 name
+            }
+        );
+    }
+
+    beginPasskeyLogin() {
+        return this.post(
+            "/passkeys/login/options"
+        );
+    }
+
+    finishPasskeyLogin({
+        challengeId,
+        credential
+    }) {
+        return this.post(
+            "/passkeys/login/verify",
+            {
+                challenge_id:
+                    challengeId,
+                credential
+            }
+        );
+    }
+
+    listPasskeys() {
+        return this.get(
+            "/passkeys"
+        );
+    }
+
+    renamePasskey({
+        credentialId,
+        name
+    }) {
+        return this.patch(
+            `/passkeys/${encodeURIComponent(
+                credentialId
+            )}`,
+            {
+                name
+            }
+        );
+    }
+
+    deletePasskey({
+        credentialId,
+        currentPassword
+    }) {
+        return this.delete(
+            `/passkeys/${encodeURIComponent(
+                credentialId
+            )}`,
+            {
+                current_password:
+                    currentPassword
             }
         );
     }

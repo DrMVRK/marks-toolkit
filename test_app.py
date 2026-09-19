@@ -170,6 +170,16 @@ class TestUserStore(UserStore):
 
         return user.auth_id
 
+    def find_by_id(
+        self,
+        user_id,
+    ):
+        for user in self.users:
+            if user.id == user_id:
+                return user
+
+        return None
+
 
 # --------------------------------------------------
 # Flask application
